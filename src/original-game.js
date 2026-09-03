@@ -206,7 +206,8 @@ function createCharacter() {
 
 async function loadProfessionalCharacter(model) {
   const loader = new FBXLoader();
-  const humanoid = await loader.loadAsync("/game/models/adventurer.fbx");
+  const modelUrl = new URL("./game/models/adventurer.fbx", document.baseURI);
+  const humanoid = await loader.loadAsync(modelUrl.href);
   const primitiveChildren = [...model.character.children];
 
   humanoid.name = "quaternius-adventurer";

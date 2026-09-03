@@ -64,11 +64,6 @@ body.game-ready #game-loading {
   }
 }
 
-body.game-ready #ui,
-body.game-ready #leaders {
-  display: none;
-}
-
 #game-hud {
   position: fixed;
   inset: 20px 20px auto;
