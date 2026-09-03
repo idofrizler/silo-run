@@ -2,6 +2,5 @@
 dist/
 node_modules/
 
-# Mirrored upstream visualization (third-party, unlicensed).
-# Never commit or publish this directory.
+# Generated local source for the full Pages build.
 site/

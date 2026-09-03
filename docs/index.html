@@ -1,94 +1,117 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script>
-      (() => {
-        const param = new URLSearchParams(window.location.search).get("scoutTheme");
-        const theme =
-          param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-        document.documentElement.setAttribute("data-theme", theme);
-      })();
-    </script>
-    <style>
-      :root {
-        color-scheme: light;
-        --cp-bg: #f7f4ef;
-        --cp-bg-elevated: #fcfbf8;
-        --cp-surface: #ffffff;
-        --cp-surface-soft: #f5f5f5;
-        --cp-border: #dedede;
-        --cp-border-strong: #919191;
-        --cp-text: #242424;
-        --cp-text-muted: #5c5c5c;
-        --cp-text-soft: #6f6f6f;
-        --cp-accent: #b11f4b;
-        --cp-accent-hover: #9a1a41;
-        --cp-accent-soft: rgba(177, 31, 75, 0.08);
-        --cp-accent-fg: #ffffff;
-        --cp-success: #16a34a;
-        --cp-danger: #dc2626;
-        --cp-warning: #f59e0b;
-        --cp-link: #0078d4;
-        --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
-        --cp-overlay: rgba(255, 255, 255, 0.8);
-        --cp-panel: rgba(255, 255, 255, 0.86);
-        --cp-panel-strong: rgba(255, 255, 255, 0.96);
-        --cp-sheen: rgba(255, 255, 255, 0.55);
-        --cp-highlight: rgba(177, 31, 75, 0.12);
-      }
-      html[data-theme="dark"] {
-        color-scheme: dark;
-        --cp-bg: #3d3b3a;
-        --cp-bg-elevated: #343231;
-        --cp-surface: #292929;
-        --cp-surface-soft: #2e2e2e;
-        --cp-border: #474747;
-        --cp-border-strong: #5f5f5f;
-        --cp-text: #dedede;
-        --cp-text-muted: #919191;
-        --cp-text-soft: #b0b0b0;
-        --cp-accent: #fd8ea1;
-        --cp-accent-hover: #fb7b91;
-        --cp-accent-soft: rgba(253, 142, 161, 0.14);
-        --cp-accent-fg: #1a1a1a;
-        --cp-success: #4ade80;
-        --cp-danger: #f87171;
-        --cp-warning: #fbbf24;
-        --cp-link: #4da6ff;
-        --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
-        --cp-overlay: rgba(41, 41, 41, 0.88);
-        --cp-panel: rgba(41, 41, 41, 0.72);
-        --cp-panel-strong: rgba(41, 41, 41, 0.96);
-        --cp-sheen: rgba(255, 255, 255, 0.04);
-        --cp-highlight: rgba(253, 142, 161, 0.12);
-      }
-    </style>
-    <link rel="stylesheet" href="./styles.css" />
-    <link rel="icon" href="data:," />
-    <title>Silo Run</title>
-  </head>
-  <body>
-    <canvas id="game" aria-label="Silo Run game"></canvas>
-    <div id="hud">
-      <div class="brand">
-        <strong>SILO RUN</strong>
-        <span id="level">LEVEL 72</span>
-      </div>
-      <div class="help">
-        <span>WASD move</span>
-        <span>Mouse camera</span>
-        <span>Shift sprint</span>
-        <span>Space jump</span>
-      </div>
+<head><script>
+  (() => {
+    const param = new URLSearchParams(window.location.search).get("scoutTheme");
+    const theme =
+      param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
+<style>
+:root {
+  color-scheme: light;
+  --cp-bg: #f7f4ef;
+  --cp-bg-elevated: #fcfbf8;
+  --cp-surface: #ffffff;
+  --cp-surface-soft: #f5f5f5;
+  --cp-border: #dedede;
+  --cp-border-strong: #919191;
+  --cp-text: #242424;
+  --cp-text-muted: #5c5c5c;
+  --cp-text-soft: #6f6f6f;
+  --cp-accent: #b11f4b;
+  --cp-accent-hover: #9a1a41;
+  --cp-accent-soft: rgba(177, 31, 75, 0.08);
+  --cp-accent-fg: #ffffff;
+  --cp-success: #16a34a;
+  --cp-danger: #dc2626;
+  --cp-warning: #f59e0b;
+  --cp-link: #0078d4;
+  --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+  --cp-overlay: rgba(255, 255, 255, 0.8);
+  --cp-panel: rgba(255, 255, 255, 0.86);
+  --cp-panel-strong: rgba(255, 255, 255, 0.96);
+  --cp-sheen: rgba(255, 255, 255, 0.55);
+  --cp-highlight: rgba(177, 31, 75, 0.12);
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --cp-bg: #3d3b3a;
+  --cp-bg-elevated: #343231;
+  --cp-surface: #292929;
+  --cp-surface-soft: #2e2e2e;
+  --cp-border: #474747;
+  --cp-border-strong: #5f5f5f;
+  --cp-text: #dedede;
+  --cp-text-muted: #919191;
+  --cp-text-soft: #b0b0b0;
+  --cp-accent: #fd8ea1;
+  --cp-accent-hover: #fb7b91;
+  --cp-accent-soft: rgba(253, 142, 161, 0.14);
+  --cp-accent-fg: #1a1a1a;
+  --cp-success: #4ade80;
+  --cp-danger: #f87171;
+  --cp-warning: #fbbf24;
+  --cp-link: #4da6ff;
+  --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+  --cp-overlay: rgba(41, 41, 41, 0.88);
+  --cp-panel: rgba(41, 41, 41, 0.72);
+  --cp-panel-strong: rgba(41, 41, 41, 0.96);
+  --cp-sheen: rgba(255, 255, 255, 0.04);
+  --cp-highlight: rgba(253, 142, 161, 0.12);
+}
+</style>
+<link rel="stylesheet" href="./game/game.css" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#0b0c0e" />
+  <title>Silo Run</title>
+  <meta name="description" content="Silo 18 cut open: 144 levels, the Great Stair, the cafeteria wallscreen, IT and the Vault, Judicial, the farms, Mechanical and the generator — and the drowned Silo 17. A stylized, interactive 3D guide to the world of Apple TV+'s Silo." />
+  <link rel="canonical" href="https://3dscenes.qualityf2p.workers.dev/silo" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="3D scenes" />
+  <meta property="og:title" content="The Silo · interactive 3D cutaway" />
+  <meta property="og:description" content="Every level the show let you see, cut open in 3D — from the wallscreen on Level 1 down to the generator and the digger, plus the flooded Silo 17." />
+  <meta property="og:url" content="https://3dscenes.qualityf2p.workers.dev/silo" />
+  <meta property="og:image" content="https://3dscenes.qualityf2p.workers.dev/silo/preview.jpg" />
+  <meta property="og:image:type" content="image/jpeg" />
+  <meta property="og:image:width" content="1600" />
+  <meta property="og:image:height" content="1000" />
+  <meta property="og:image:alt" content="Stylized 3D cutaway of the Silo" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="The Silo · interactive 3D cutaway" />
+  <meta name="twitter:image" content="https://3dscenes.qualityf2p.workers.dev/silo/preview.jpg" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='46' fill='%231f2220'/><circle cx='50' cy='50' r='18' fill='none' stroke='%23e9e2cf' stroke-width='6'/><circle cx='50' cy='50' r='34' fill='none' stroke='%23e9e2cf' stroke-width='3' stroke-dasharray='8 6'/></svg>" />
+  <link rel="preload" as="image" href="./preview.jpg" />
+  <script type="module" crossorigin src="./assets/index-eApUP_Fs.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-BsJlgSIg.css">
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <svg id="leaders" aria-hidden="true"></svg>
+  <div id="ui"></div>
+  <div id="loader">
+    <div class="loader-inner">
+      <div class="loader-logo">SILO</div>
+      <div class="loader-sub">144 levels · cut open · interactive 3D</div>
+      <div class="loader-bar"><div class="loader-fill" id="loader-fill"></div></div>
+      <div class="loader-text" id="loader-text">Pouring concrete…</div>
     </div>
-    <div id="crosshair" aria-hidden="true"></div>
-    <button id="enter" type="button">
-      <strong>Enter the silo</strong>
-      <span>Click to capture the mouse</span>
-    </button>
-    <div id="status" role="status"></div>
-    <script type="module" src="./game.js"></script>
-  </body>
+  </div>
+<div id="game-loading">
+  <div class="game-loading-card">
+    <strong>SILO RUN</strong>
+    <div class="game-loading-indicator" aria-hidden="true"></div>
+    <span>Preparing Silo 18</span>
+  </div>
+</div><div id="game-hud">
+  <div class="game-brand"><strong>SILO RUN</strong><span id="game-level">LEVEL 68</span></div>
+  <div class="game-help"><span>WASD move</span><span>Mouse aim</span><span>Shift toggle run</span><span>Space jump</span><span>R reset</span></div>
+</div>
+<div id="game-crosshair" aria-hidden="true"></div>
+<button id="game-enter" type="button"><strong>Enter Silo 18</strong><span>Click to capture the mouse</span></button>
+<div id="game-status" role="status"></div>
+<script type="module" src="./game/game.js"></script></body>
 </html>
