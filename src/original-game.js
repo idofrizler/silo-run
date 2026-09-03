@@ -970,10 +970,14 @@ async function startGame() {
   const position = new THREE.Vector3(0, -START_LEVEL * LEVEL_HEIGHT, -22);
   const lastSafe = position.clone();
   const forward = new THREE.Vector3();
+  const viewForward = new THREE.Vector3();
   const right = new THREE.Vector3();
   const movement = new THREE.Vector3();
+  const cameraRigPosition = new THREE.Vector3();
+  const cameraLookTarget = new THREE.Vector3();
   let npcSystem = null;
   let questSystem = null;
+  let cameraRigReady = false;
   let yaw = -Math.PI / 2;
   let pitch = -0.12;
   let cameraDistance = 5.2;
@@ -1134,10 +1138,14 @@ async function startGame() {
   });
   addEventListener("keyup", (event) => keys.delete(event.code));
   addEventListener("blur", () => keys.clear());
+  function applyLookDelta(deltaX, deltaY) {
+    yaw -= deltaX * 0.0024;
+    pitch = THREE.MathUtils.clamp(pitch - deltaY * 0.0018, -0.48, 0.35);
+  }
+
   addEventListener("mousemove", (event) => {
     if (document.pointerLockElement !== canvas) return;
-    yaw -= event.movementX * 0.0024;
-    pitch = THREE.MathUtils.clamp(pitch - event.movementY * 0.0018, -0.48, 0.35);
+    applyLookDelta(event.movementX, event.movementY);
   });
   canvas.addEventListener(
     "wheel",
@@ -1180,9 +1188,20 @@ async function startGame() {
   app.camera.updateProjectionMatrix();
   document.body.classList.add("game-ready");
 
+  app.onLate(() => {
+    if (!cameraRigReady) return;
+    app.camera.position.copy(cameraRigPosition);
+    app.controls.target.copy(cameraLookTarget);
+    app.camera.lookAt(cameraLookTarget);
+    app.camera.updateMatrixWorld();
+  });
+
   app.onUpdate((delta) => {
     delta = Math.min(delta, 0.05);
     const canMove = !questSystem?.dialogueOpen;
+    viewForward.set(-Math.sin(yaw), 0, -Math.cos(yaw));
+    forward.copy(viewForward);
+    right.crossVectors(forward, UP).normalize();
     const forwardInput = canMove
       ? Number(keys.has("KeyW") || keys.has("ArrowUp")) -
         Number(keys.has("KeyS") || keys.has("ArrowDown"))
@@ -1191,8 +1210,6 @@ async function startGame() {
       ? Number(keys.has("KeyD") || keys.has("ArrowRight")) -
         Number(keys.has("KeyA") || keys.has("ArrowLeft"))
       : 0;
-    forward.set(-Math.sin(yaw), 0, -Math.cos(yaw));
-    right.set(Math.cos(yaw), 0, -Math.sin(yaw));
     movement
       .set(0, 0, 0)
       .addScaledVector(forward, forwardInput)
@@ -1293,7 +1310,7 @@ async function startGame() {
     const target = position.clone().add(new THREE.Vector3(0, 1.35, 0));
     const ideal = target
       .clone()
-      .addScaledVector(forward, -cameraDistance * Math.cos(pitch))
+      .addScaledVector(viewForward, -cameraDistance * Math.cos(pitch))
       .addScaledVector(UP, 2.25 + Math.sin(pitch) * cameraDistance);
     const floorHeight = regularGround(position, position.y) ?? position.y;
     ideal.y = THREE.MathUtils.clamp(
@@ -1338,14 +1355,10 @@ async function startGame() {
     const safeCameraPosition = target
       .clone()
       .addScaledVector(cameraDirection, allowedDistance);
-    if (allowedDistance < idealDistance - 0.05) {
-      app.camera.position.copy(safeCameraPosition);
-    } else {
-      app.camera.position.lerp(safeCameraPosition, 1 - Math.exp(-12 * delta));
-    }
-    const lookTarget = target.clone().addScaledVector(forward, 2.5);
-    lookTarget.y += Math.sin(pitch) * 2.5;
-    app.controls.target.copy(lookTarget);
+    cameraRigPosition.copy(safeCameraPosition);
+    cameraLookTarget.copy(target).addScaledVector(viewForward, 2.5);
+    cameraLookTarget.y += Math.sin(pitch) * 2.5;
+    cameraRigReady = true;
 
     const level = THREE.MathUtils.clamp(
       Math.round(-position.y / LEVEL_HEIGHT),
@@ -1377,6 +1390,9 @@ async function startGame() {
     },
     setYaw(value) {
       yaw = value;
+    },
+    lookBy(deltaX, deltaY) {
+      applyLookDelta(deltaX, deltaY);
     },
     teleport(x, y, z) {
       position.set(x, y, z);
