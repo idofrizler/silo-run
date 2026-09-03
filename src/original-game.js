@@ -650,6 +650,8 @@ async function startGame() {
   let npcSystem = null;
   let yaw = -Math.PI / 2;
   let pitch = -0.12;
+  let cameraDistance = 5.2;
+  let targetCameraDistance = cameraDistance;
   let verticalVelocity = 0;
   let grounded = false;
   let jumpQueued = false;
@@ -801,6 +803,18 @@ async function startGame() {
     yaw -= event.movementX * 0.0024;
     pitch = THREE.MathUtils.clamp(pitch - event.movementY * 0.0018, -0.48, 0.35);
   });
+  canvas.addEventListener(
+    "wheel",
+    (event) => {
+      event.preventDefault();
+      targetCameraDistance = THREE.MathUtils.clamp(
+        targetCameraDistance + Math.sign(event.deltaY) * 0.75,
+        2.4,
+        10,
+      );
+    },
+    { passive: false },
+  );
 
   canvas.tabIndex = 0;
   function capturePointer() {
@@ -932,11 +946,16 @@ async function startGame() {
     }
     model.character.position.copy(position);
 
+    cameraDistance = THREE.MathUtils.lerp(
+      cameraDistance,
+      targetCameraDistance,
+      1 - Math.exp(-10 * delta),
+    );
     const target = position.clone().add(new THREE.Vector3(0, 1.35, 0));
     const ideal = target
       .clone()
-      .addScaledVector(forward, -5.2 * Math.cos(pitch))
-      .addScaledVector(UP, 2.25 + Math.sin(pitch) * 5.2);
+      .addScaledVector(forward, -cameraDistance * Math.cos(pitch))
+      .addScaledVector(UP, 2.25 + Math.sin(pitch) * cameraDistance);
     const floorHeight = regularGround(position, position.y) ?? position.y;
     ideal.y = THREE.MathUtils.clamp(
       ideal.y,

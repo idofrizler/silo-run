@@ -36,6 +36,7 @@ Controls:
 
 - `WASD` or arrow keys: move
 - Mouse: aim the camera and movement direction
+- Mouse wheel: zoom the camera in and out
 - `Shift`: toggle walking/running
 - `Space`: jump
 - `R`: respawn

@@ -77,7 +77,7 @@ const loadingUi = `<div id="game-loading">
 
 const gameUi = `${loadingUi}<div id="game-hud">
   <div class="game-brand"><strong>SILO RUN</strong><span id="game-level">LEVEL 67</span></div>
-  <div class="game-help"><span>WASD move</span><span>Mouse aim</span><span>Shift toggle run</span><span>Space jump</span><span>R reset</span></div>
+  <div class="game-help"><span>WASD move</span><span>Mouse aim</span><span>Scroll zoom</span><span>Shift toggle run</span><span>Space jump</span><span>R reset</span></div>
 </div>
 <div id="game-crosshair" aria-hidden="true"></div>
 <button id="game-enter" type="button"><strong>Enter Silo 18</strong><span>Click to capture the mouse</span></button>
@@ -96,6 +96,12 @@ if (!html.includes('id="game-loading"')) {
 }
 
 html = html.replace("<span>Mouse camera</span>", "<span>Mouse aim</span>");
+if (!html.includes("<span>Scroll zoom</span>")) {
+  html = html.replace(
+    "<span>Mouse aim</span>",
+    "<span>Mouse aim</span><span>Scroll zoom</span>",
+  );
+}
 html = html.replace(
   "<span>Shift sprint</span>",
   "<span>Shift toggle run</span>",
