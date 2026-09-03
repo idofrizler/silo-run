@@ -81,8 +81,7 @@ body.game-ready #game-hud {
 }
 
 .game-brand {
-  display: grid;
-  gap: 4px;
+  display: none;
 }
 
 .game-brand strong {

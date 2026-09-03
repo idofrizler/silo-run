@@ -577,6 +577,9 @@ function upwardHit(raycaster, objects) {
 
 async function startGame() {
   const app = await waitForOriginalApp();
+  const sceneTitle = document.querySelector(".brand-title");
+  if (sceneTitle) sceneTitle.textContent = "SILO RUN";
+
   app.silo.set("18");
   app.cancelFlight();
   app.flyTo = async () => {};
