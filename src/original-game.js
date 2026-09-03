@@ -313,6 +313,49 @@ function stabilizeLighting(app) {
   return navigationLight;
 }
 
+function lockToSilo18(app) {
+  const root = document.documentElement;
+  let restoring = false;
+
+  const enforce = () => {
+    const buttons = [...document.querySelectorAll("button")];
+    const silo17Button = buttons.find(
+      (button) => button.textContent.trim() === "Silo 17",
+    );
+    if (silo17Button) {
+      silo17Button.disabled = true;
+      silo17Button.setAttribute("aria-disabled", "true");
+      silo17Button.title = "Silo 17 is unavailable in Silo Run";
+    }
+
+    if (
+      !restoring &&
+      (root.classList.contains("silo17") ||
+        silo17Button?.classList.contains("active"))
+    ) {
+      restoring = true;
+      app.silo.set("18");
+      queueMicrotask(() => {
+        restoring = false;
+        enforce();
+      });
+    }
+  };
+
+  enforce();
+  new MutationObserver(enforce).observe(root, {
+    attributeFilter: ["class"],
+    attributes: true,
+  });
+  const ui = document.querySelector("#ui");
+  if (ui) {
+    new MutationObserver(enforce).observe(ui, {
+      childList: true,
+      subtree: true,
+    });
+  }
+}
+
 function createNpcSystem(app, source, wallCollisions, playerPosition) {
   const npcGroup = new THREE.Group();
   npcGroup.name = "silo-run-npcs";
@@ -1112,6 +1155,7 @@ async function startGame() {
   app.renderer.shadowMap.enabled = false;
   app.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
   app.resize();
+  lockToSilo18(app);
   const navigationLight = stabilizeLighting(app);
 
   const completedHalf = completeSilo(app);
@@ -1343,14 +1387,33 @@ async function startGame() {
     jumpQueued = false;
   });
 
+  const controlledKeys = new Set([
+    "ArrowDown",
+    "ArrowLeft",
+    "ArrowRight",
+    "ArrowUp",
+    "KeyA",
+    "KeyD",
+    "KeyE",
+    "KeyR",
+    "KeyS",
+    "KeyW",
+    "ShiftLeft",
+    "ShiftRight",
+    "Space",
+  ]);
+
   addEventListener("keydown", (event) => {
+    if (controlledKeys.has(event.code)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
     if (
       event.code === "KeyE" &&
       !event.repeat &&
       (questSystem?.interact() || gapSystem?.interact())
     ) {
       keys.clear();
-      event.preventDefault();
       return;
     }
     if (
@@ -1358,16 +1421,20 @@ async function startGame() {
       (event.code === "ShiftLeft" || event.code === "ShiftRight")
     ) {
       running = !running;
-      event.preventDefault();
     }
     keys.add(event.code);
     if (event.code === "Space") {
       if (!event.repeat) jumpQueued = true;
-      event.preventDefault();
     }
     if (event.code === "KeyR") respawn();
-  });
-  addEventListener("keyup", (event) => keys.delete(event.code));
+  }, { capture: true });
+  addEventListener("keyup", (event) => {
+    if (controlledKeys.has(event.code)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+    keys.delete(event.code);
+  }, { capture: true });
   addEventListener("blur", () => keys.clear());
   function applyLookDelta(deltaX, deltaY) {
     yaw -= deltaX * 0.0024;

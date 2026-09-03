@@ -51,6 +51,9 @@ roll of tape among the Level 110 warehouse racks.
 At **The Gap**, use the scaffold interaction near Level 90 or Level 92 to cross
 the missing stair section safely.
 
+Silo Run is currently locked to **Silo 18**. The flooded Silo 17 scene is
+disabled so its controls and rendering cannot interrupt gameplay.
+
 The previous simplified prototype remains available at
 <http://127.0.0.1:4173/prototype/>.
 
