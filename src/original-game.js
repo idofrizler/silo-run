@@ -246,6 +246,73 @@ async function loadProfessionalCharacter(model) {
   return humanoid;
 }
 
+function stylePlayerAsJuliette(model, humanoid) {
+  const headMesh = humanoid.getObjectByName("Adventurer_Head");
+  const headMaterials = Array.isArray(headMesh?.material)
+    ? headMesh.material
+    : [headMesh?.material].filter(Boolean);
+  const originalHair = headMaterials.find(
+    (material) => material.name.toLowerCase() === "hair",
+  );
+  if (originalHair) originalHair.visible = false;
+
+  const hair = new THREE.Group();
+  hair.name = "juliette-hair";
+  const blonde = new THREE.MeshStandardMaterial({
+    color: 0x8d713e,
+    roughness: 0.88,
+  });
+  const blondeDark = new THREE.MeshStandardMaterial({
+    color: 0x6f542d,
+    roughness: 0.9,
+  });
+  const addHair = (geometry, position, scale = null, material = blonde) => {
+    const strand = new THREE.Mesh(geometry, material);
+    strand.position.copy(position);
+    if (scale) strand.scale.copy(scale);
+    strand.castShadow = false;
+    hair.add(strand);
+    return strand;
+  };
+
+  addHair(
+    new THREE.SphereGeometry(0.21, 20, 14, 0, TAU, 0, Math.PI * 0.64),
+    new THREE.Vector3(0, 2.035, -0.008),
+    new THREE.Vector3(0.94, 1, 0.9),
+  );
+  for (let index = -2; index <= 2; index += 1) {
+    const strand = addHair(
+      new THREE.CapsuleGeometry(0.038, 0.28 + (2 - Math.abs(index)) * 0.025, 6, 9),
+      new THREE.Vector3(index * 0.052, 1.82, -0.155 + Math.abs(index) * 0.012),
+      null,
+      index % 2 === 0 ? blonde : blondeDark,
+    );
+    strand.rotation.z = index * 0.035;
+  }
+  for (const side of [-1, 1]) {
+    const strand = addHair(
+      new THREE.CapsuleGeometry(0.035, 0.25, 6, 10),
+      new THREE.Vector3(side * 0.165, 1.82, -0.02),
+    );
+    strand.rotation.z = side * 0.08;
+  }
+
+  model.character.add(hair);
+  model.hair = hair;
+}
+
+function stabilizeLighting(app) {
+  app.scene.traverse((object) => {
+    if (object.isHemisphereLight) object.intensity = Math.max(object.intensity, 0.9);
+  });
+
+  const navigationLight = new THREE.PointLight(0xffe8c7, 8, 22, 2);
+  navigationLight.name = "silo-run-navigation-light";
+  navigationLight.castShadow = false;
+  app.scene.add(navigationLight);
+  return navigationLight;
+}
+
 function createNpcSystem(app, source, wallCollisions, playerPosition) {
   const npcGroup = new THREE.Group();
   npcGroup.name = "silo-run-npcs";
@@ -440,65 +507,10 @@ function createQuestMarker() {
   return { setSymbol, sprite };
 }
 
-function createVineSign() {
-  const canvas = document.createElement("canvas");
-  canvas.width = 256;
-  canvas.height = 384;
-  const context = canvas.getContext("2d");
-  context.strokeStyle = "rgba(77, 126, 83, 0.78)";
-  context.fillStyle = "rgba(77, 126, 83, 0.78)";
-  context.lineCap = "round";
-  context.lineWidth = 18;
-  context.beginPath();
-  context.moveTo(128, 36);
-  context.bezierCurveTo(62, 105, 194, 174, 128, 274);
-  context.stroke();
-
-  for (const [x, y, rotation] of [
-    [94, 105, -0.65],
-    [166, 165, 0.65],
-    [91, 224, -0.7],
-  ]) {
-    context.save();
-    context.translate(x, y);
-    context.rotate(rotation);
-    context.beginPath();
-    context.ellipse(0, 0, 34, 16, 0, 0, TAU);
-    context.fill();
-    context.restore();
-  }
-
-  context.beginPath();
-  context.moveTo(128, 345);
-  context.lineTo(76, 274);
-  context.lineTo(180, 274);
-  context.closePath();
-  context.fill();
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  const material = new THREE.MeshBasicMaterial({
-    map: texture,
-    side: THREE.DoubleSide,
-    transparent: true,
-  });
-  const sign = new THREE.Mesh(new THREE.PlaneGeometry(0.65, 1), material);
-  sign.name = "quest-painted-vine";
-
-  const angle = Math.atan2(-2.73, -21.8);
-  const radius = 19.42;
-  sign.position.set(
-    Math.cos(angle) * radius,
-    -START_LEVEL * LEVEL_HEIGHT + 1.08,
-    Math.sin(angle) * radius,
-  );
-  sign.rotation.y = Math.PI / 2 - angle;
-  return sign;
-}
-
 function createFirstQuest(app, npcSystem, playerPosition) {
   const questGiver = npcSystem.npcs[0];
   const tracker = document.querySelector("#quest-tracker");
+  const trackerTitle = tracker?.querySelector("strong");
   const objective = document.querySelector("#quest-objective");
   const prompt = document.querySelector("#quest-prompt");
   const dialogue = document.querySelector("#quest-dialogue");
@@ -507,6 +519,7 @@ function createFirstQuest(app, npcSystem, playerPosition) {
   const toast = document.querySelector("#quest-toast");
   if (
     !tracker ||
+    !trackerTitle ||
     !objective ||
     !prompt ||
     !dialogue ||
@@ -522,7 +535,7 @@ function createFirstQuest(app, npcSystem, playerPosition) {
 
   const relic = new THREE.Group();
   relic.name = "last-green-token";
-  relic.position.set(-20.31, -START_LEVEL * LEVEL_HEIGHT + 0.08, -2.54);
+  relic.position.set(-48.45, -66 * LEVEL_HEIGHT + 0.08, -35.28);
 
   const brass = new THREE.MeshStandardMaterial({
     color: 0xa9782c,
@@ -567,24 +580,90 @@ function createFirstQuest(app, npcSystem, playerPosition) {
   );
   glint.position.set(0.08, 0.18, 0);
   relic.add(glint);
+  relic.visible = false;
 
   app.groups.dynamic.add(relic);
-  app.groups.dynamic.add(createVineSign());
+
+  const tape = new THREE.Group();
+  tape.name = "good-supply-tape";
+  tape.position.set(-54.55, -110 * LEVEL_HEIGHT + 0.32, -19.42);
+  const tapeMaterial = new THREE.MeshStandardMaterial({
+    color: 0xd9bd56,
+    emissive: 0x5a4708,
+    emissiveIntensity: 0.25,
+    metalness: 0.08,
+    roughness: 0.72,
+  });
+  const tapeCore = new THREE.MeshStandardMaterial({
+    color: 0xe4d7a7,
+    roughness: 0.92,
+  });
+  const roll = new THREE.Mesh(
+    new THREE.TorusGeometry(0.18, 0.065, 12, 28),
+    tapeMaterial,
+  );
+  roll.rotation.x = Math.PI / 2;
+  tape.add(roll);
+  const core = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.105, 0.105, 0.025, 24),
+    tapeCore,
+  );
+  tape.add(core);
+  const labelCanvas = document.createElement("canvas");
+  labelCanvas.width = 128;
+  labelCanvas.height = 128;
+  const labelContext = labelCanvas.getContext("2d");
+  labelContext.fillStyle = "#eadb9d";
+  labelContext.beginPath();
+  labelContext.arc(64, 64, 58, 0, TAU);
+  labelContext.fill();
+  labelContext.fillStyle = "#3b3219";
+  labelContext.font = '900 30px "Segoe UI", sans-serif';
+  labelContext.textAlign = "center";
+  labelContext.textBaseline = "middle";
+  labelContext.fillText("GOOD", 64, 65);
+  const labelTexture = new THREE.CanvasTexture(labelCanvas);
+  labelTexture.colorSpace = THREE.SRGBColorSpace;
+  const label = new THREE.Mesh(
+    new THREE.CircleGeometry(0.095, 24),
+    new THREE.MeshBasicMaterial({ map: labelTexture, transparent: true }),
+  );
+  label.position.y = 0.018;
+  label.rotation.x = -Math.PI / 2;
+  tape.add(label);
+  const tapeGlint = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.05),
+    new THREE.MeshBasicMaterial({
+      color: 0xffec9b,
+      transparent: true,
+      opacity: 0.9,
+    }),
+  );
+  tapeGlint.position.set(0.1, 0.22, 0);
+  tape.add(tapeGlint);
+  tape.visible = false;
+  app.groups.dynamic.add(tape);
 
   const introDialogue = [
     "A porter once showed me a brass token from before the Rebellion. Said he hid it where the Silo still remembers sunlight.",
-    "Look below the gardens—not inside them. Find the landing where the painted vine points downward. Check behind the bench.",
+    "He called the hiding place a room where the Silo pretends the outside still exists. That was all he would tell me.",
   ];
   const returnDialogue = [
     "A tree under an open sky… so the stories weren’t invented here.",
     "Keep it. Just don’t let Judicial see you carrying it.",
+  ];
+  const supplyDialogue = [
+    "Mechanical needs a roll of tape that won’t split the first time it gets warm. Supply keeps insisting they’re good in Supply.",
+    "Find the roll marked GOOD somewhere in their warehouse on Level 110. With all those racks, it may take some looking.",
   ];
 
   let state = "talk";
   let dialoguePages = null;
   let dialogueIndex = 0;
   let toastTime = 4.5;
+  let searchTime = 0;
 
+  trackerTitle.textContent = "THE LAST GREEN TOKEN";
   tracker.classList.add("show");
   objective.textContent = "Talk to Mara, the resident with the gold quest marker.";
   toast.textContent = "QUEST STARTED · THE LAST GREEN TOKEN";
@@ -608,14 +687,25 @@ function createFirstQuest(app, npcSystem, playerPosition) {
     if (state === "talk") {
       state = "search";
       marker.sprite.visible = false;
+      relic.visible = true;
+      searchTime = 0;
       objective.textContent = "Find the brass token using Mara’s clues.";
       showToast("NEW OBJECTIVE · FIND THE BRASS TOKEN");
     } else if (state === "return") {
-      state = "complete";
-      marker.sprite.visible = false;
-      objective.textContent = "Quest complete · The Last Green Token";
-      tracker.classList.add("complete");
+      state = "supplyOffer";
+      marker.setSymbol("!");
+      marker.sprite.visible = true;
+      trackerTitle.textContent = "THEY’RE GOOD IN SUPPLY";
+      objective.textContent = "Talk to Mara about another job.";
       showToast("QUEST COMPLETE · THE LAST GREEN TOKEN");
+    } else if (state === "supplyOffer") {
+      state = "supplySearch";
+      marker.sprite.visible = false;
+      tape.visible = true;
+      searchTime = 0;
+      objective.textContent =
+        "Search Supply’s Level 110 warehouse for the roll marked GOOD.";
+      showToast("QUEST STARTED · THEY’RE GOOD IN SUPPLY");
     }
   }
 
@@ -648,10 +738,16 @@ function createFirstQuest(app, npcSystem, playerPosition) {
     }
 
     if (
-      (state === "talk" || state === "return") &&
+      (state === "talk" || state === "return" || state === "supplyOffer") &&
       near(questGiver.position, 3.2)
     ) {
-      openDialogue(state === "talk" ? introDialogue : returnDialogue);
+      openDialogue(
+        state === "talk"
+          ? introDialogue
+          : state === "return"
+            ? returnDialogue
+            : supplyDialogue,
+      );
       return true;
     }
 
@@ -669,12 +765,33 @@ function createFirstQuest(app, npcSystem, playerPosition) {
       return true;
     }
 
+    if (state === "supplySearch" && near(tape.position, 2.1)) {
+      state = "supplyComplete";
+      tape.visible = false;
+      tracker.classList.add("complete");
+      objective.textContent = "Quest complete · They’re Good in Supply";
+      prompt.classList.remove("show");
+      prompt.textContent = "";
+      showToast("QUEST COMPLETE · FOUND THE GOOD TAPE");
+      return true;
+    }
+
     return false;
   }
 
   function update(delta) {
     toastTime -= delta;
     if (toastTime <= 0) toast.classList.remove("show");
+
+    if (state === "search" || state === "supplySearch") searchTime += delta;
+
+    if (state === "search" && searchTime > 75) {
+      objective.textContent =
+        "Hint: Seek the place where the Silo manufactures daylight.";
+    } else if (state === "supplySearch" && searchTime > 90) {
+      objective.textContent =
+        "Hint: Check the deeper rack rows, beside the stacked spools.";
+    }
 
     const relicDistance = playerPosition.distanceTo(relic.position);
     const glintVisible = state === "search" && relicDistance < 7;
@@ -684,6 +801,14 @@ function createFirstQuest(app, npcSystem, playerPosition) {
       const pulse = 0.75 + Math.sin(performance.now() * 0.006) * 0.25;
       glint.scale.setScalar(pulse);
     }
+    const tapeDistance = playerPosition.distanceTo(tape.position);
+    const tapeGlintVisible = state === "supplySearch" && tapeDistance < 6;
+    tapeGlint.visible = tapeGlintVisible;
+    if (tapeGlintVisible) {
+      tapeGlint.rotation.y += delta * 2.8;
+      const pulse = 0.75 + Math.sin(performance.now() * 0.006) * 0.25;
+      tapeGlint.scale.setScalar(pulse);
+    }
 
     if (dialoguePages) {
       prompt.classList.remove("show");
@@ -692,12 +817,14 @@ function createFirstQuest(app, npcSystem, playerPosition) {
 
     let message = "";
     if (
-      (state === "talk" || state === "return") &&
+      (state === "talk" || state === "return" || state === "supplyOffer") &&
       near(questGiver.position, 3.2)
     ) {
       message = "E · Talk to Mara";
     } else if (state === "search" && near(relic.position, 2.1)) {
       message = "E · Inspect the brass glint";
+    } else if (state === "supplySearch" && near(tape.position, 2.1)) {
+      message = "E · Inspect the roll marked GOOD";
     }
 
     prompt.textContent = message;
@@ -714,6 +841,79 @@ function createFirstQuest(app, npcSystem, playerPosition) {
     interact,
     questGiver,
     relic,
+    tape,
+    update,
+  };
+}
+
+function createGapTraversal(playerPosition, onArrive) {
+  const prompt = document.querySelector("#quest-prompt");
+  const status = document.querySelector("#game-status");
+  const top = new THREE.Vector3(4.3, -90 * LEVEL_HEIGHT, -1.1);
+  const bottom = new THREE.Vector3(4.3, -92 * LEVEL_HEIGHT, 1.1);
+  const start = new THREE.Vector3();
+  const destination = new THREE.Vector3();
+  let elapsed = 0;
+  let traveling = false;
+
+  function nearEndpoint(point) {
+    const horizontalDistance = Math.hypot(
+      playerPosition.x - point.x,
+      playerPosition.z - point.z,
+    );
+    return horizontalDistance < 5.5 && Math.abs(playerPosition.y - point.y) < 2.8;
+  }
+
+  function interact() {
+    if (traveling) return true;
+    const atTop = nearEndpoint(top);
+    const atBottom = nearEndpoint(bottom);
+    if (!atTop && !atBottom) return false;
+
+    start.copy(playerPosition);
+    destination.copy(atTop ? bottom : top);
+    elapsed = 0;
+    traveling = true;
+    prompt?.classList.remove("show");
+    if (status) {
+      status.textContent = atTop
+        ? "Climbing the Gap scaffold down to Level 92…"
+        : "Climbing the Gap scaffold up to Level 90…";
+    }
+    return true;
+  }
+
+  function update(delta) {
+    if (traveling) {
+      elapsed += delta;
+      const progress = THREE.MathUtils.clamp(elapsed / 3.2, 0, 1);
+      const eased = progress * progress * (3 - 2 * progress);
+      playerPosition.lerpVectors(start, destination, eased);
+      if (progress >= 1) {
+        traveling = false;
+        if (status) status.textContent = "";
+        onArrive(destination);
+      }
+      return;
+    }
+
+    if (!prompt) return;
+    if (nearEndpoint(top)) {
+      prompt.textContent = "E · Climb the scaffold down to Level 92";
+      prompt.classList.add("show");
+    } else if (nearEndpoint(bottom)) {
+      prompt.textContent = "E · Climb the scaffold up to Level 90";
+      prompt.classList.add("show");
+    }
+  }
+
+  return {
+    get traveling() {
+      return traveling;
+    },
+    bottom,
+    interact,
+    top,
     update,
   };
 }
@@ -912,6 +1112,7 @@ async function startGame() {
   app.renderer.shadowMap.enabled = false;
   app.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
   app.resize();
+  const navigationLight = stabilizeLighting(app);
 
   const completedHalf = completeSilo(app);
   app.scene.updateMatrixWorld(true);
@@ -940,6 +1141,17 @@ async function startGame() {
     (object) =>
       object.name.startsWith("gallery") || object.name.startsWith("bridges"),
   );
+  const gapGroundMeshes = [
+    ...colliders,
+    "gapStubTop",
+    "gapStubBottom",
+    "gapRubble",
+    "gapScaffold",
+  ]
+    .map((object) =>
+      typeof object === "string" ? shaft?.getObjectByName(object) : object,
+    )
+    .filter(Boolean);
   const cameraCollisionMeshes = [
     "helix0",
     "helix1",
@@ -978,6 +1190,7 @@ async function startGame() {
   const cameraLookTarget = new THREE.Vector3();
   let npcSystem = null;
   let questSystem = null;
+  let gapSystem = null;
   let cameraRigReady = false;
   let yaw = -Math.PI / 2;
   let pitch = -0.12;
@@ -993,6 +1206,7 @@ async function startGame() {
   try {
     const humanoid = await loadProfessionalCharacter(model);
     npcSystem = createNpcSystem(app, humanoid, wallCollisions, position);
+    stylePlayerAsJuliette(model, humanoid);
     questSystem = createFirstQuest(app, npcSystem, position);
   } catch (error) {
     console.error("Unable to initialize residents and quests.", error);
@@ -1002,8 +1216,9 @@ async function startGame() {
     const radius = Math.hypot(point.x, point.z);
     const candidates = [];
     const approximateLevel = Math.round(-referenceY / LEVEL_HEIGHT);
+    const inGap = approximateLevel >= 90 && approximateLevel <= 92;
 
-    if (radius >= 19.2 && radius <= 74.5) {
+    if (!inGap && radius >= 19.2 && radius <= 74.5) {
       for (let offset = -1; offset <= 1; offset += 1) {
         const level = approximateLevel + offset;
         if (level >= 1 && level <= 144) candidates.push(-level * LEVEL_HEIGHT);
@@ -1011,6 +1226,7 @@ async function startGame() {
     }
 
     if (
+      !inGap &&
       radius >= STAIR_MIN_RADIUS - PLAYER_RADIUS &&
       radius <= STAIR_MAX_RADIUS + PLAYER_RADIUS
     ) {
@@ -1042,14 +1258,20 @@ async function startGame() {
 
   function irregularGroundBelow(point, lift = 1.2, distance = 3.2) {
     const radius = Math.hypot(point.x, point.z);
-    if (radius < 5.6 || radius > 20.2) return null;
+    const depth = -point.y / LEVEL_HEIGHT;
+    const inGap = depth >= 89.5 && depth <= 92.5;
+    if (inGap) {
+      if (radius < 1.8 || radius > 74.5) return null;
+    } else if (radius < 5.6 || radius > 20.2) {
+      return null;
+    }
     raycaster.set(
       new THREE.Vector3(point.x, point.y + lift, point.z),
       new THREE.Vector3(0, -1, 0),
     );
     raycaster.near = 0;
     raycaster.far = distance + lift;
-    return upwardHit(raycaster, innerColliders);
+    return upwardHit(raycaster, inGap ? gapGroundMeshes : innerColliders);
   }
 
   function groundBelow(point, lift = 1.2, distance = 3.2) {
@@ -1113,11 +1335,19 @@ async function startGame() {
     jumpQueued = false;
   }
 
+  gapSystem = createGapTraversal(position, (destination) => {
+    position.copy(destination);
+    lastSafe.copy(destination);
+    verticalVelocity = 0;
+    grounded = true;
+    jumpQueued = false;
+  });
+
   addEventListener("keydown", (event) => {
     if (
       event.code === "KeyE" &&
       !event.repeat &&
-      questSystem?.interact()
+      (questSystem?.interact() || gapSystem?.interact())
     ) {
       keys.clear();
       event.preventDefault();
@@ -1195,11 +1425,13 @@ async function startGame() {
     app.controls.target.copy(cameraLookTarget);
     app.camera.lookAt(cameraLookTarget);
     app.camera.updateMatrixWorld();
+    navigationLight.position.copy(cameraRigPosition);
   });
 
   app.onUpdate((delta) => {
     delta = Math.min(delta, 0.05);
-    const canMove = !questSystem?.dialogueOpen;
+    gapSystem?.update(delta);
+    const canMove = !questSystem?.dialogueOpen && !gapSystem?.traveling;
     viewForward.set(-Math.sin(yaw), 0, -Math.cos(yaw));
     forward.copy(viewForward);
     right.crossVectors(forward, UP).normalize();
@@ -1258,26 +1490,28 @@ async function startGame() {
       }
     }
 
-    if (grounded && jumpQueued) {
-      verticalVelocity = 6.2;
-      grounded = false;
-    }
-    jumpQueued = false;
+    if (!gapSystem?.traveling) {
+      if (grounded && jumpQueued) {
+        verticalVelocity = 6.2;
+        grounded = false;
+      }
+      jumpQueued = false;
 
-    verticalVelocity -= 17 * delta;
-    position.y += verticalVelocity * delta;
-    const ground = groundBelow(position, 1, 3);
-    if (
-      ground &&
-      verticalVelocity <= 0 &&
-      position.y - ground.point.y <= 0.45
-    ) {
-      position.y = ground.point.y;
-      verticalVelocity = 0;
-      grounded = true;
-      lastSafe.copy(position);
-    } else {
-      grounded = false;
+      verticalVelocity -= 17 * delta;
+      position.y += verticalVelocity * delta;
+      const ground = groundBelow(position, 1, 3);
+      if (
+        ground &&
+        verticalVelocity <= 0 &&
+        position.y - ground.point.y <= 0.45
+      ) {
+        position.y = ground.point.y;
+        verticalVelocity = 0;
+        grounded = true;
+        lastSafe.copy(position);
+      } else {
+        grounded = false;
+      }
     }
 
     if (position.y < -1160 || position.y < lastSafe.y - 24) respawn();
@@ -1368,6 +1602,7 @@ async function startGame() {
     );
     npcSystem?.update(delta, level);
     questSystem?.update(delta);
+    gapSystem?.update(0);
     levelLabel.textContent = `LEVEL ${level}`;
     if (sceneSubtitle) {
       sceneSubtitle.textContent =
@@ -1387,6 +1622,12 @@ async function startGame() {
     },
     get questSystem() {
       return questSystem;
+    },
+    get gapSystem() {
+      return gapSystem;
+    },
+    groundBelow(x, y, z, lift = 1, distance = 3) {
+      return groundBelow(new THREE.Vector3(x, y, z), lift, distance);
     },
     position,
     respawn,

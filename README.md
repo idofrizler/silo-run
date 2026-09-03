@@ -44,7 +44,12 @@ Controls:
 - `Esc`: release the mouse
 
 The first quest, **The Last Green Token**, begins automatically on Level 67.
-Talk to Mara and follow her environmental clues to recover the relic.
+Talk to Mara and follow her environmental clues into the Gardens to recover the
+relic. Completing it unlocks **They’re Good in Supply**, a search for one useful
+roll of tape among the Level 110 warehouse racks.
+
+At **The Gap**, use the scaffold interaction near Level 90 or Level 92 to cross
+the missing stair section safely.
 
 The previous simplified prototype remains available at
 <http://127.0.0.1:4173/prototype/>.
