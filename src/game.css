@@ -181,6 +181,133 @@ body.game-ready #game-enter.hidden {
   pointer-events: none;
 }
 
+#quest-tracker {
+  position: fixed;
+  top: 72px;
+  right: 20px;
+  z-index: 42;
+  display: none;
+  width: min(330px, calc(100vw - 40px));
+  padding: 13px 15px;
+  border: 1px solid var(--cp-border);
+  border-left: 3px solid var(--cp-warning);
+  border-radius: 0.625rem;
+  background: var(--cp-panel);
+  color: var(--cp-text);
+  box-shadow: var(--cp-shadow);
+  font-family: "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
+  pointer-events: none;
+}
+
+#quest-tracker.show {
+  display: grid;
+  gap: 5px;
+}
+
+#quest-tracker.complete {
+  border-left-color: var(--cp-success);
+}
+
+#quest-tracker strong {
+  color: var(--cp-warning);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+}
+
+#quest-tracker.complete strong {
+  color: var(--cp-success);
+}
+
+#quest-objective {
+  color: var(--cp-text-muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+#quest-prompt {
+  position: fixed;
+  left: 50%;
+  bottom: 86px;
+  z-index: 54;
+  display: none;
+  padding: 9px 14px;
+  border: 1px solid var(--cp-border);
+  border-radius: 999px;
+  background: var(--cp-panel-strong);
+  color: var(--cp-text);
+  box-shadow: var(--cp-shadow);
+  font: 700 13px Consolas, "Courier New", monospace;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+#quest-prompt.show {
+  display: block;
+}
+
+#quest-dialogue {
+  position: fixed;
+  left: 50%;
+  bottom: 58px;
+  z-index: 55;
+  display: none;
+  width: min(620px, calc(100vw - 40px));
+  padding: 20px 22px 16px;
+  border: 1px solid var(--cp-border);
+  border-radius: 0.75rem;
+  background: var(--cp-panel-strong);
+  color: var(--cp-text);
+  box-shadow: var(--cp-shadow);
+  font-family: "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+#quest-dialogue.show {
+  display: block;
+}
+
+#quest-speaker {
+  color: var(--cp-warning);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+}
+
+#quest-dialogue p {
+  margin: 10px 0 14px;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+#quest-dialogue > span {
+  color: var(--cp-text-muted);
+  font: 12px Consolas, "Courier New", monospace;
+}
+
+#quest-toast {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  z-index: 56;
+  opacity: 0;
+  padding: 9px 14px;
+  border: 1px solid var(--cp-border);
+  border-radius: 999px;
+  background: var(--cp-panel-strong);
+  color: var(--cp-warning);
+  box-shadow: var(--cp-shadow);
+  font: 700 12px Consolas, "Courier New", monospace;
+  letter-spacing: 0.06em;
+  transform: translate(-50%, -12px);
+  transition: opacity 180ms ease-out, transform 180ms ease-out;
+  pointer-events: none;
+}
+
+#quest-toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
 @media (max-width: 700px) {
   #game-hud {
     inset: 12px 12px auto;
@@ -188,5 +315,17 @@ body.game-ready #game-enter.hidden {
 
   .game-help {
     display: none;
+  }
+
+  #quest-tracker {
+    top: 62px;
+    right: 12px;
+    width: min(310px, calc(100vw - 24px));
+  }
+
+  #quest-dialogue {
+    bottom: 24px;
+    width: calc(100vw - 24px);
+    box-sizing: border-box;
   }
 }

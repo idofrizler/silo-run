@@ -37,10 +37,14 @@ Controls:
 - `WASD` or arrow keys: move
 - Mouse: aim the camera and movement direction
 - Mouse wheel: zoom the camera in and out
+- `E`: talk to residents and inspect quest objects
 - `Shift`: toggle walking/running
 - `Space`: jump
 - `R`: respawn
 - `Esc`: release the mouse
+
+The first quest, **The Last Green Token**, begins automatically on Level 67.
+Talk to Mara and follow her environmental clues to recover the relic.
 
 The previous simplified prototype remains available at
 <http://127.0.0.1:4173/prototype/>.

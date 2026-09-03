@@ -75,13 +75,25 @@ const loadingUi = `<div id="game-loading">
   </div>
 </div>`;
 
+const questUi = `<aside id="quest-tracker">
+  <strong>THE LAST GREEN TOKEN</strong>
+  <span id="quest-objective"></span>
+</aside>
+<div id="quest-prompt"></div>
+<section id="quest-dialogue" role="dialog" aria-live="polite">
+  <strong id="quest-speaker"></strong>
+  <p id="quest-dialogue-text"></p>
+  <span>Press E to continue</span>
+</section>
+<div id="quest-toast" role="status"></div>`;
+
 const gameUi = `${loadingUi}<div id="game-hud">
   <div class="game-brand"><strong>SILO RUN</strong><span id="game-level">LEVEL 67</span></div>
-  <div class="game-help"><span>WASD move</span><span>Mouse aim</span><span>Scroll zoom</span><span>Shift toggle run</span><span>Space jump</span><span>R reset</span></div>
+  <div class="game-help"><span>WASD move</span><span>Mouse aim</span><span>Scroll zoom</span><span>E interact</span><span>Shift toggle run</span><span>Space jump</span><span>R reset</span></div>
 </div>
 <div id="game-crosshair" aria-hidden="true"></div>
 <button id="game-enter" type="button"><strong>Enter Silo 18</strong><span>Click to capture the mouse</span></button>
-<div id="game-status" role="status"></div>
+<div id="game-status" role="status"></div>${questUi}
 <script type="module" src="./game/game.js"></script>`;
 
 if (!html.includes("./game/game.js")) {
@@ -95,11 +107,24 @@ if (!html.includes('id="game-loading"')) {
   html = html.replace('<div id="game-hud">', `${loadingUi}<div id="game-hud">`);
 }
 
+if (!html.includes('id="quest-tracker"')) {
+  html = html.replace(
+    '<script type="module" src="./game/game.js"></script>',
+    `${questUi}<script type="module" src="./game/game.js"></script>`,
+  );
+}
+
 html = html.replace("<span>Mouse camera</span>", "<span>Mouse aim</span>");
 if (!html.includes("<span>Scroll zoom</span>")) {
   html = html.replace(
     "<span>Mouse aim</span>",
     "<span>Mouse aim</span><span>Scroll zoom</span>",
+  );
+}
+if (!html.includes("<span>E interact</span>")) {
+  html = html.replace(
+    "<span>Scroll zoom</span>",
+    "<span>Scroll zoom</span><span>E interact</span>",
   );
 }
 html = html.replace(

@@ -251,10 +251,11 @@ function createNpcSystem(app, source, wallCollisions, playerPosition) {
   npcGroup.name = "silo-run-npcs";
   app.groups.dynamic.add(npcGroup);
 
+  const idleClip = source.animations.find((clip) => clip.name.endsWith("|Idle"));
   const walkClip = source.animations.find((clip) => clip.name.endsWith("|Walk"));
   const levelOffsets = [0, 0, 0, 0, 1, 1, -1, -1, 2, -2];
   const startingAngles = [
-    -2,
+    -1.7,
     -1.35,
     -0.8,
     -0.25,
@@ -328,11 +329,13 @@ function createNpcSystem(app, source, wallCollisions, playerPosition) {
     npcGroup.add(group);
 
     const mixer = new THREE.AnimationMixer(visual);
-    const walk = walkClip ? mixer.clipAction(walkClip) : null;
-    if (walk) {
-      walk.timeScale = 0.84 + (index % 4) * 0.06;
-      walk.play();
-      walk.time = (index * 0.17) % walkClip.duration;
+    const stationary = index === 0;
+    const animationClip = stationary ? idleClip : walkClip;
+    const animation = animationClip ? mixer.clipAction(animationClip) : null;
+    if (animation) {
+      animation.timeScale = stationary ? 1 : 0.84 + (index % 4) * 0.06;
+      animation.play();
+      animation.time = (index * 0.17) % animationClip.duration;
     }
     const npc = {
       angle: startingAngles[index],
@@ -345,9 +348,11 @@ function createNpcSystem(app, source, wallCollisions, playerPosition) {
         144,
       ),
       mixer,
+      name: stationary ? "Mara" : `Resident ${index + 1}`,
       position: new THREE.Vector3(),
       radius: laneRadii[index % laneRadii.length],
       speed: 1.15 + (index % 5) * 0.1,
+      stationary,
     };
     placeNpc(npc);
     npcs.push(npc);
@@ -358,6 +363,7 @@ function createNpcSystem(app, source, wallCollisions, playerPosition) {
       const levelShift = playerLevel - anchorLevel;
       anchorLevel = playerLevel;
       for (const npc of npcs) {
+        if (npc.stationary) continue;
         npc.level = THREE.MathUtils.clamp(npc.level + levelShift, 1, 144);
         placeNpc(npc);
       }
@@ -365,7 +371,7 @@ function createNpcSystem(app, source, wallCollisions, playerPosition) {
 
     for (const npc of npcs) {
       npc.mixer.update(delta);
-      if (!npc.group.visible) continue;
+      if (!npc.group.visible || npc.stationary) continue;
       const nextAngle =
         npc.angle + (npc.direction * npc.speed * delta) / npc.radius;
       const candidate = new THREE.Vector3(
@@ -394,6 +400,322 @@ function createNpcSystem(app, source, wallCollisions, playerPosition) {
   }
 
   return { group: npcGroup, npcs, update };
+}
+
+function createQuestMarker() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 128;
+  canvas.height = 128;
+  const context = canvas.getContext("2d");
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  const material = new THREE.SpriteMaterial({
+    depthTest: false,
+    map: texture,
+    transparent: true,
+  });
+  const sprite = new THREE.Sprite(material);
+  sprite.position.set(0, 2.9, 0);
+  sprite.scale.setScalar(0.72);
+  sprite.renderOrder = 1000;
+
+  function setSymbol(symbol) {
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = symbol === "?" ? "#82c99a" : "#e9bd62";
+    context.beginPath();
+    context.arc(64, 64, 46, 0, TAU);
+    context.fill();
+    context.lineWidth = 6;
+    context.strokeStyle = "#fff7df";
+    context.stroke();
+    context.fillStyle = "#1f2220";
+    context.font = '900 72px "Segoe UI", sans-serif';
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText(symbol, 64, 67);
+    texture.needsUpdate = true;
+  }
+
+  setSymbol("!");
+  return { setSymbol, sprite };
+}
+
+function createVineSign() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 384;
+  const context = canvas.getContext("2d");
+  context.strokeStyle = "rgba(77, 126, 83, 0.78)";
+  context.fillStyle = "rgba(77, 126, 83, 0.78)";
+  context.lineCap = "round";
+  context.lineWidth = 18;
+  context.beginPath();
+  context.moveTo(128, 36);
+  context.bezierCurveTo(62, 105, 194, 174, 128, 274);
+  context.stroke();
+
+  for (const [x, y, rotation] of [
+    [94, 105, -0.65],
+    [166, 165, 0.65],
+    [91, 224, -0.7],
+  ]) {
+    context.save();
+    context.translate(x, y);
+    context.rotate(rotation);
+    context.beginPath();
+    context.ellipse(0, 0, 34, 16, 0, 0, TAU);
+    context.fill();
+    context.restore();
+  }
+
+  context.beginPath();
+  context.moveTo(128, 345);
+  context.lineTo(76, 274);
+  context.lineTo(180, 274);
+  context.closePath();
+  context.fill();
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  const material = new THREE.MeshBasicMaterial({
+    map: texture,
+    side: THREE.DoubleSide,
+    transparent: true,
+  });
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(0.65, 1), material);
+  sign.name = "quest-painted-vine";
+
+  const angle = Math.atan2(-2.73, -21.8);
+  const radius = 19.42;
+  sign.position.set(
+    Math.cos(angle) * radius,
+    -START_LEVEL * LEVEL_HEIGHT + 1.08,
+    Math.sin(angle) * radius,
+  );
+  sign.rotation.y = Math.PI / 2 - angle;
+  return sign;
+}
+
+function createFirstQuest(app, npcSystem, playerPosition) {
+  const questGiver = npcSystem.npcs[0];
+  const tracker = document.querySelector("#quest-tracker");
+  const objective = document.querySelector("#quest-objective");
+  const prompt = document.querySelector("#quest-prompt");
+  const dialogue = document.querySelector("#quest-dialogue");
+  const speaker = document.querySelector("#quest-speaker");
+  const dialogueText = document.querySelector("#quest-dialogue-text");
+  const toast = document.querySelector("#quest-toast");
+  if (
+    !tracker ||
+    !objective ||
+    !prompt ||
+    !dialogue ||
+    !speaker ||
+    !dialogueText ||
+    !toast
+  ) {
+    throw new Error("The quest interface is missing from the page.");
+  }
+
+  const marker = createQuestMarker();
+  questGiver.group.add(marker.sprite);
+
+  const relic = new THREE.Group();
+  relic.name = "last-green-token";
+  relic.position.set(-20.31, -START_LEVEL * LEVEL_HEIGHT + 0.08, -2.54);
+
+  const brass = new THREE.MeshStandardMaterial({
+    color: 0xa9782c,
+    emissive: 0x5c3a08,
+    emissiveIntensity: 0.32,
+    metalness: 0.82,
+    roughness: 0.3,
+  });
+  const darkBrass = new THREE.MeshStandardMaterial({
+    color: 0x47300f,
+    metalness: 0.55,
+    roughness: 0.45,
+  });
+  const coin = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.18, 0.18, 0.045, 32),
+    brass,
+  );
+  coin.castShadow = true;
+  relic.add(coin);
+
+  const trunk = new THREE.Mesh(
+    new THREE.BoxGeometry(0.035, 0.012, 0.1),
+    darkBrass,
+  );
+  trunk.position.y = 0.03;
+  relic.add(trunk);
+  const crown = new THREE.Mesh(
+    new THREE.SphereGeometry(0.075, 12, 8),
+    darkBrass,
+  );
+  crown.scale.z = 0.65;
+  crown.position.set(0, 0.03, -0.055);
+  relic.add(crown);
+
+  const glint = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.055),
+    new THREE.MeshBasicMaterial({
+      color: 0xffe2a0,
+      transparent: true,
+      opacity: 0.9,
+    }),
+  );
+  glint.position.set(0.08, 0.18, 0);
+  relic.add(glint);
+
+  app.groups.dynamic.add(relic);
+  app.groups.dynamic.add(createVineSign());
+
+  const introDialogue = [
+    "A porter once showed me a brass token from before the Rebellion. Said he hid it where the Silo still remembers sunlight.",
+    "Look below the gardens—not inside them. Find the landing where the painted vine points downward. Check behind the bench.",
+  ];
+  const returnDialogue = [
+    "A tree under an open sky… so the stories weren’t invented here.",
+    "Keep it. Just don’t let Judicial see you carrying it.",
+  ];
+
+  let state = "talk";
+  let dialoguePages = null;
+  let dialogueIndex = 0;
+  let toastTime = 4.5;
+
+  tracker.classList.add("show");
+  objective.textContent = "Talk to Mara, the resident with the gold quest marker.";
+  toast.textContent = "QUEST STARTED · THE LAST GREEN TOKEN";
+  toast.classList.add("show");
+
+  function showToast(message) {
+    toast.textContent = message;
+    toast.classList.add("show");
+    toastTime = 4;
+  }
+
+  function closeDialogue() {
+    dialogue.classList.remove("show");
+    dialoguePages = null;
+    prompt.classList.remove("show");
+    prompt.textContent = "";
+  }
+
+  function finishDialogue() {
+    closeDialogue();
+    if (state === "talk") {
+      state = "search";
+      marker.sprite.visible = false;
+      objective.textContent = "Find the brass token using Mara’s clues.";
+      showToast("NEW OBJECTIVE · FIND THE BRASS TOKEN");
+    } else if (state === "return") {
+      state = "complete";
+      marker.sprite.visible = false;
+      objective.textContent = "Quest complete · The Last Green Token";
+      tracker.classList.add("complete");
+      showToast("QUEST COMPLETE · THE LAST GREEN TOKEN");
+    }
+  }
+
+  function openDialogue(pages) {
+    dialoguePages = pages;
+    dialogueIndex = 0;
+    speaker.textContent = "MARA · LEVEL 67";
+    dialogueText.textContent = dialoguePages[dialogueIndex];
+    dialogue.classList.add("show");
+    prompt.classList.remove("show");
+  }
+
+  function advanceDialogue() {
+    dialogueIndex += 1;
+    if (dialogueIndex >= dialoguePages.length) {
+      finishDialogue();
+      return;
+    }
+    dialogueText.textContent = dialoguePages[dialogueIndex];
+  }
+
+  function near(point, distance) {
+    return playerPosition.distanceToSquared(point) <= distance * distance;
+  }
+
+  function interact() {
+    if (dialoguePages) {
+      advanceDialogue();
+      return true;
+    }
+
+    if (
+      (state === "talk" || state === "return") &&
+      near(questGiver.position, 3.2)
+    ) {
+      openDialogue(state === "talk" ? introDialogue : returnDialogue);
+      return true;
+    }
+
+    if (state === "search" && near(relic.position, 2.1)) {
+      state = "return";
+      relic.visible = false;
+      marker.setSymbol("?");
+      marker.sprite.visible = true;
+      prompt.classList.remove("show");
+      prompt.textContent = "";
+      objective.textContent = "Bring the brass token back to Mara.";
+      showToast(
+        "RELIC FOUND · A brass token stamped with a tree beneath an open sky.",
+      );
+      return true;
+    }
+
+    return false;
+  }
+
+  function update(delta) {
+    toastTime -= delta;
+    if (toastTime <= 0) toast.classList.remove("show");
+
+    const relicDistance = playerPosition.distanceTo(relic.position);
+    const glintVisible = state === "search" && relicDistance < 7;
+    glint.visible = glintVisible;
+    if (glintVisible) {
+      glint.rotation.y += delta * 2.8;
+      const pulse = 0.75 + Math.sin(performance.now() * 0.006) * 0.25;
+      glint.scale.setScalar(pulse);
+    }
+
+    if (dialoguePages) {
+      prompt.classList.remove("show");
+      return;
+    }
+
+    let message = "";
+    if (
+      (state === "talk" || state === "return") &&
+      near(questGiver.position, 3.2)
+    ) {
+      message = "E · Talk to Mara";
+    } else if (state === "search" && near(relic.position, 2.1)) {
+      message = "E · Inspect the brass glint";
+    }
+
+    prompt.textContent = message;
+    prompt.classList.toggle("show", Boolean(message));
+  }
+
+  return {
+    get dialogueOpen() {
+      return Boolean(dialoguePages);
+    },
+    get state() {
+      return state;
+    },
+    interact,
+    questGiver,
+    relic,
+    update,
+  };
 }
 
 function createCollisionGrid(roots) {
@@ -651,6 +973,7 @@ async function startGame() {
   const right = new THREE.Vector3();
   const movement = new THREE.Vector3();
   let npcSystem = null;
+  let questSystem = null;
   let yaw = -Math.PI / 2;
   let pitch = -0.12;
   let cameraDistance = 5.2;
@@ -665,8 +988,9 @@ async function startGame() {
   try {
     const humanoid = await loadProfessionalCharacter(model);
     npcSystem = createNpcSystem(app, humanoid, wallCollisions, position);
+    questSystem = createFirstQuest(app, npcSystem, position);
   } catch (error) {
-    console.error("Unable to load the professional player model.", error);
+    console.error("Unable to initialize residents and quests.", error);
   }
 
   function regularGround(point, referenceY = point.y) {
@@ -786,6 +1110,15 @@ async function startGame() {
 
   addEventListener("keydown", (event) => {
     if (
+      event.code === "KeyE" &&
+      !event.repeat &&
+      questSystem?.interact()
+    ) {
+      keys.clear();
+      event.preventDefault();
+      return;
+    }
+    if (
       !event.repeat &&
       (event.code === "ShiftLeft" || event.code === "ShiftRight")
     ) {
@@ -849,12 +1182,15 @@ async function startGame() {
 
   app.onUpdate((delta) => {
     delta = Math.min(delta, 0.05);
-    const forwardInput =
-      Number(keys.has("KeyW") || keys.has("ArrowUp")) -
-      Number(keys.has("KeyS") || keys.has("ArrowDown"));
-    const sideInput =
-      Number(keys.has("KeyD") || keys.has("ArrowRight")) -
-      Number(keys.has("KeyA") || keys.has("ArrowLeft"));
+    const canMove = !questSystem?.dialogueOpen;
+    const forwardInput = canMove
+      ? Number(keys.has("KeyW") || keys.has("ArrowUp")) -
+        Number(keys.has("KeyS") || keys.has("ArrowDown"))
+      : 0;
+    const sideInput = canMove
+      ? Number(keys.has("KeyD") || keys.has("ArrowRight")) -
+        Number(keys.has("KeyA") || keys.has("ArrowLeft"))
+      : 0;
     forward.set(-Math.sin(yaw), 0, -Math.cos(yaw));
     right.set(Math.cos(yaw), 0, -Math.sin(yaw));
     movement
@@ -1017,6 +1353,7 @@ async function startGame() {
       144,
     );
     npcSystem?.update(delta, level);
+    questSystem?.update(delta);
     levelLabel.textContent = `LEVEL ${level}`;
   });
 
@@ -1029,6 +1366,9 @@ async function startGame() {
     model,
     get npcSystem() {
       return npcSystem;
+    },
+    get questSystem() {
+      return questSystem;
     },
     position,
     respawn,
