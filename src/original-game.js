@@ -248,57 +248,74 @@ async function loadProfessionalCharacter(model) {
 
 function stylePlayerAsJuliette(model, humanoid) {
   const headMesh = humanoid.getObjectByName("Adventurer_Head");
+  if (!headMesh?.geometry) return;
+
   const headMaterials = Array.isArray(headMesh?.material)
-    ? headMesh.material
+    ? [...headMesh.material]
     : [headMesh?.material].filter(Boolean);
-  const originalHair = headMaterials.find(
+  const hairMaterialIndex = headMaterials.findIndex(
     (material) => material.name.toLowerCase() === "hair",
   );
-  if (originalHair) originalHair.visible = false;
+  if (hairMaterialIndex < 0) return;
 
-  const hair = new THREE.Group();
-  hair.name = "juliette-hair";
-  const blonde = new THREE.MeshStandardMaterial({
-    color: 0x8d713e,
-    roughness: 0.88,
-  });
-  const blondeDark = new THREE.MeshStandardMaterial({
-    color: 0x6f542d,
-    roughness: 0.9,
-  });
-  const addHair = (geometry, position, scale = null, material = blonde) => {
-    const strand = new THREE.Mesh(geometry, material);
-    strand.position.copy(position);
-    if (scale) strand.scale.copy(scale);
-    strand.castShadow = false;
-    hair.add(strand);
-    return strand;
-  };
+  const blondeHair = headMaterials[hairMaterialIndex].clone();
+  blondeHair.color.setHex(0xb89a5a);
+  blondeHair.roughness = 0.88;
+  blondeHair.visible = true;
+  headMaterials[hairMaterialIndex] = blondeHair;
+  headMesh.material = headMaterials;
 
-  addHair(
-    new THREE.SphereGeometry(0.21, 20, 14, 0, TAU, 0, Math.PI * 0.64),
-    new THREE.Vector3(0, 2.035, -0.008),
-    new THREE.Vector3(0.94, 1, 0.9),
-  );
-  for (let index = -2; index <= 2; index += 1) {
-    const strand = addHair(
-      new THREE.CapsuleGeometry(0.038, 0.28 + (2 - Math.abs(index)) * 0.025, 6, 9),
-      new THREE.Vector3(index * 0.052, 1.82, -0.155 + Math.abs(index) * 0.012),
-      null,
-      index % 2 === 0 ? blonde : blondeDark,
-    );
-    strand.rotation.z = index * 0.035;
+  const sourceGeometry = headMesh.geometry;
+  const sourceIndex = sourceGeometry.index;
+  const positions = sourceGeometry.attributes.position;
+  const indices = [];
+  const filteredGroups = [];
+
+  for (const group of sourceGeometry.groups) {
+    const start = indices.length;
+    for (let offset = group.start; offset < group.start + group.count; offset += 3) {
+      let includeTriangle = true;
+      if (group.materialIndex === hairMaterialIndex) {
+        let depth = 0;
+        let height = 0;
+        for (let corner = 0; corner < 3; corner += 1) {
+          const vertex = sourceIndex
+            ? sourceIndex.getX(offset + corner)
+            : offset + corner;
+          depth += positions.getY(vertex);
+          height += positions.getZ(vertex);
+        }
+        depth /= 3;
+        height /= 3;
+
+        // The FBX combines scalp and facial hair in one material. Its lower,
+        // forward triangles are the mustache and beard; the scalp lies above
+        // this height or behind the face.
+        includeTriangle = height >= 1.67 || depth >= -0.05;
+      }
+
+      if (!includeTriangle) continue;
+      for (let corner = 0; corner < 3; corner += 1) {
+        indices.push(
+          sourceIndex ? sourceIndex.getX(offset + corner) : offset + corner,
+        );
+      }
+    }
+    filteredGroups.push({
+      count: indices.length - start,
+      materialIndex: group.materialIndex,
+      start,
+    });
   }
-  for (const side of [-1, 1]) {
-    const strand = addHair(
-      new THREE.CapsuleGeometry(0.035, 0.25, 6, 10),
-      new THREE.Vector3(side * 0.165, 1.82, -0.02),
-    );
-    strand.rotation.z = side * 0.08;
-  }
 
-  model.character.add(hair);
-  model.hair = hair;
+  const geometry = sourceGeometry.clone();
+  geometry.setIndex(indices);
+  geometry.clearGroups();
+  for (const group of filteredGroups) {
+    geometry.addGroup(group.start, group.count, group.materialIndex);
+  }
+  headMesh.geometry = geometry;
+  model.hair = headMesh;
 }
 
 function stabilizeLighting(app) {
