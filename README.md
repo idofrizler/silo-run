@@ -43,7 +43,7 @@ Controls:
 - `R`: respawn
 - `Esc`: release the mouse
 
-The first quest, **The Last Green Token**, begins automatically on Level 67.
+The first quest, **The Forbidden Relic**, begins automatically on Level 67.
 Talk to Mara and follow her environmental clues into the Gardens to recover the
 relic. Completing it unlocks **They’re Good in Supply**, a search for one useful
 roll of tape among the Level 110 warehouse racks.

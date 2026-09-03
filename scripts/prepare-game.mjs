@@ -76,7 +76,7 @@ const loadingUi = `<div id="game-loading">
 </div>`;
 
 const questUi = `<aside id="quest-tracker">
-  <strong>THE LAST GREEN TOKEN</strong>
+  <strong>THE FORBIDDEN RELIC</strong>
   <span id="quest-objective"></span>
 </aside>
 <div id="quest-prompt"></div>

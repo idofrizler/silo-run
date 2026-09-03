@@ -11,6 +11,7 @@ const PLAYER_HEIGHT = 1.9;
 const COLLISION_CELL_SIZE = 6;
 const STAIR_MIN_RADIUS = 4.05;
 const STAIR_MAX_RADIUS = 5.7;
+const MAX_FALL_LEVELS = 20;
 const SOLID_INSTANCE_NAME =
   /^shell-(box|cyl|column|bigPipe|door|rack|bench)(#\d+)?$/;
 
@@ -646,7 +647,7 @@ function createFirstQuest(app, npcSystem, playerPosition) {
 
   const tape = new THREE.Group();
   tape.name = "good-supply-tape";
-  tape.position.set(-54.55, -110 * LEVEL_HEIGHT + 0.32, -19.42);
+  tape.position.set(-54.55, -110 * LEVEL_HEIGHT + 0.07, -22.17);
   const tapeMaterial = new THREE.MeshStandardMaterial({
     color: 0xd9bd56,
     emissive: 0x5a4708,
@@ -723,10 +724,10 @@ function createFirstQuest(app, npcSystem, playerPosition) {
   let toastTime = 4.5;
   let searchTime = 0;
 
-  trackerTitle.textContent = "THE LAST GREEN TOKEN";
+  trackerTitle.textContent = "THE FORBIDDEN RELIC";
   tracker.classList.add("show");
   objective.textContent = "Talk to Mara, the resident with the gold quest marker.";
-  toast.textContent = "QUEST STARTED · THE LAST GREEN TOKEN";
+  toast.textContent = "QUEST STARTED · THE FORBIDDEN RELIC";
   toast.classList.add("show");
 
   function showToast(message) {
@@ -757,7 +758,7 @@ function createFirstQuest(app, npcSystem, playerPosition) {
       marker.sprite.visible = true;
       trackerTitle.textContent = "THEY’RE GOOD IN SUPPLY";
       objective.textContent = "Talk to Mara about another job.";
-      showToast("QUEST COMPLETE · THE LAST GREEN TOKEN");
+      showToast("QUEST COMPLETE · THE FORBIDDEN RELIC");
     } else if (state === "supplyOffer") {
       state = "supplySearch";
       marker.sprite.visible = false;
@@ -825,7 +826,7 @@ function createFirstQuest(app, npcSystem, playerPosition) {
       return true;
     }
 
-    if (state === "supplySearch" && near(tape.position, 2.1)) {
+    if (state === "supplySearch" && near(tape.position, 2.5)) {
       state = "supplyComplete";
       tape.visible = false;
       tracker.classList.add("complete");
@@ -850,7 +851,7 @@ function createFirstQuest(app, npcSystem, playerPosition) {
         "Hint: Seek the place where the Silo manufactures daylight.";
     } else if (state === "supplySearch" && searchTime > 90) {
       objective.textContent =
-        "Hint: Check the deeper rack rows, beside the stacked spools.";
+        "Hint: Check the open aisle beyond the deeper racks, beside the stacked spools.";
     }
 
     const relicDistance = playerPosition.distanceTo(relic.position);
@@ -862,7 +863,7 @@ function createFirstQuest(app, npcSystem, playerPosition) {
       glint.scale.setScalar(pulse);
     }
     const tapeDistance = playerPosition.distanceTo(tape.position);
-    const tapeGlintVisible = state === "supplySearch" && tapeDistance < 6;
+    const tapeGlintVisible = state === "supplySearch" && tapeDistance < 8;
     tapeGlint.visible = tapeGlintVisible;
     if (tapeGlintVisible) {
       tapeGlint.rotation.y += delta * 2.8;
@@ -883,7 +884,7 @@ function createFirstQuest(app, npcSystem, playerPosition) {
       message = "E · Talk to Mara";
     } else if (state === "search" && near(relic.position, 2.1)) {
       message = "E · Inspect the brass glint";
-    } else if (state === "supplySearch" && near(tape.position, 2.1)) {
+    } else if (state === "supplySearch" && near(tape.position, 2.5)) {
       message = "E · Inspect the roll marked GOOD";
     }
 
@@ -1598,7 +1599,12 @@ async function startGame() {
       }
     }
 
-    if (position.y < -1160 || position.y < lastSafe.y - 24) respawn();
+    if (
+      position.y < -1160 ||
+      position.y < lastSafe.y - MAX_FALL_LEVELS * LEVEL_HEIGHT
+    ) {
+      respawn();
+    }
 
     if (moving) {
       const targetRotation = Math.atan2(movement.x, movement.z);
