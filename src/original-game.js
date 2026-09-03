@@ -900,6 +900,7 @@ function upwardHit(raycaster, objects) {
 async function startGame() {
   const app = await waitForOriginalApp();
   const sceneTitle = document.querySelector(".brand-title");
+  const sceneSubtitle = document.querySelector(".brand-sub");
   if (sceneTitle) sceneTitle.textContent = "SILO RUN";
 
   app.silo.set("18");
@@ -1368,6 +1369,10 @@ async function startGame() {
     npcSystem?.update(delta, level);
     questSystem?.update(delta);
     levelLabel.textContent = `LEVEL ${level}`;
+    if (sceneSubtitle) {
+      sceneSubtitle.textContent =
+        `LEVEL ${level} · 144 LEVELS · CUT OPEN · INTERACTIVE`;
+    }
   });
 
   window.__siloRun = {
