@@ -1,0 +1,198 @@
+body:not(.game-ready) {
+  background: var(--cp-bg);
+}
+
+body:not(.game-ready) canvas {
+  opacity: 0;
+}
+
+body:not(.game-ready) #ui,
+body:not(.game-ready) #leaders {
+  visibility: hidden;
+}
+
+canvas {
+  transition: opacity 180ms ease-out;
+}
+
+#game-loading {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: var(--cp-bg);
+  color: var(--cp-text);
+  font-family: "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+body.game-ready #game-loading {
+  display: none;
+}
+
+.game-loading-card {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+}
+
+.game-loading-card strong {
+  color: var(--cp-accent);
+  font-size: 28px;
+  letter-spacing: 0.18em;
+}
+
+.game-loading-card span {
+  color: var(--cp-text-muted);
+  font-family: Consolas, "Courier New", Courier, monospace;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+
+.game-loading-indicator {
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--cp-border);
+  border-top-color: var(--cp-accent);
+  border-radius: 50%;
+  animation: game-loading-spin 800ms linear infinite;
+}
+
+@keyframes game-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+body.game-ready #ui,
+body.game-ready #leaders {
+  display: none;
+}
+
+#game-hud {
+  position: fixed;
+  inset: 20px 20px auto;
+  z-index: 40;
+  display: none;
+  align-items: flex-start;
+  justify-content: space-between;
+  color: var(--cp-text);
+  font-family: "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
+  pointer-events: none;
+}
+
+body.game-ready #game-hud {
+  display: flex;
+}
+
+.game-brand {
+  display: grid;
+  gap: 4px;
+}
+
+.game-brand strong {
+  color: var(--cp-accent);
+  font-size: 24px;
+  letter-spacing: 0.18em;
+  text-shadow: 0 1px 3px var(--cp-bg);
+}
+
+.game-brand span,
+.game-help {
+  color: var(--cp-text-soft);
+  font-family: Consolas, "Courier New", Courier, monospace;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+
+.game-help {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  max-width: 520px;
+}
+
+.game-help span {
+  padding: 6px 9px;
+  border: 1px solid var(--cp-border);
+  border-radius: 0.625rem;
+  background: var(--cp-panel);
+}
+
+#game-crosshair {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 40;
+  display: none;
+  width: 6px;
+  height: 6px;
+  border: 1px solid var(--cp-accent-fg);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--cp-border-strong);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+body.game-ready #game-crosshair {
+  display: block;
+}
+
+#game-enter {
+  position: fixed;
+  left: 50%;
+  bottom: 36px;
+  z-index: 50;
+  display: none;
+  gap: 3px;
+  min-width: 230px;
+  padding: 12px 18px;
+  border: 1px solid var(--cp-border);
+  border-radius: 0.625rem;
+  background: var(--cp-panel-strong);
+  color: var(--cp-text);
+  box-shadow: 0 0 2px var(--cp-border), 0 1px 2px var(--cp-border-strong);
+  font-family: "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
+  cursor: pointer;
+  transform: translateX(-50%);
+}
+
+body.game-ready #game-enter {
+  display: grid;
+}
+
+body.game-ready #game-enter.hidden {
+  display: none;
+}
+
+#game-enter strong {
+  color: var(--cp-accent);
+}
+
+#game-enter span {
+  color: var(--cp-text-muted);
+  font-size: 12px;
+}
+
+#game-status {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  z-index: 50;
+  color: var(--cp-warning);
+  font-family: Consolas, "Courier New", Courier, monospace;
+  font-size: 12px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+@media (max-width: 700px) {
+  #game-hud {
+    inset: 12px 12px auto;
+  }
+
+  .game-help {
+    display: none;
+  }
+}
