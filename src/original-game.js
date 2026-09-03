@@ -12,6 +12,7 @@ const COLLISION_CELL_SIZE = 6;
 const STAIR_MIN_RADIUS = 4.05;
 const STAIR_MAX_RADIUS = 5.7;
 const MAX_FALL_LEVELS = 20;
+const WORLD_BOTTOM_Y = -1185;
 const SOLID_INSTANCE_NAME =
   /^shell-(box|cyl|column|bigPipe|door|rack|bench)(#\d+)?$/;
 
@@ -979,6 +980,174 @@ function createGapTraversal(playerPosition, onArrive) {
   };
 }
 
+function createDeepTraversal(app, playerPosition, onArrive) {
+  const prompt = document.querySelector("#quest-prompt");
+  const status = document.querySelector("#game-status");
+  const fade = document.createElement("div");
+  fade.id = "deep-travel-fade";
+  fade.innerHTML = "<strong></strong>";
+  document.body.appendChild(fade);
+
+  const level144 = new THREE.Vector3(4.3, -144 * LEVEL_HEIGHT, 0);
+  const generatorUpper = new THREE.Vector3(-45, -1124.97, -16);
+  const generatorLower = new THREE.Vector3(-30, -1124.97, -20);
+  const digger = new THREE.Vector3(-20, -1165.5, -20);
+  const routes = [
+    {
+      destination: generatorUpper,
+      message: "Descending the service lift to Generator…",
+      point: level144,
+      prompt: "E · Take the service lift down to Generator",
+      symbol: "↓",
+    },
+    {
+      destination: level144,
+      message: "Ascending the service lift to Level 144…",
+      point: generatorUpper,
+      prompt: "E · Take the service lift up to Level 144",
+      symbol: "↑",
+    },
+    {
+      destination: digger,
+      message: "Descending the maintenance lift to the Digger…",
+      point: generatorLower,
+      prompt: "E · Take the maintenance lift down to the Digger",
+      symbol: "↓",
+    },
+    {
+      destination: generatorLower,
+      message: "Ascending the maintenance lift to Generator…",
+      point: digger,
+      prompt: "E · Take the maintenance lift up to Generator",
+      symbol: "↑",
+    },
+  ];
+
+  const stations = new THREE.Group();
+  stations.name = "deep-service-lifts";
+  const hatchMaterial = new THREE.MeshStandardMaterial({
+    color: 0x343b38,
+    metalness: 0.7,
+    roughness: 0.42,
+  });
+  const ringMaterial = new THREE.MeshBasicMaterial({ color: 0xe2a33b });
+
+  for (const route of routes) {
+    const station = new THREE.Group();
+    station.position.copy(route.point);
+
+    const hatch = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.72, 0.72, 0.06, 24),
+      hatchMaterial,
+    );
+    hatch.position.y = 0.03;
+    station.add(hatch);
+
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(0.52, 0.045, 8, 24),
+      ringMaterial,
+    );
+    ring.position.y = 0.07;
+    ring.rotation.x = Math.PI / 2;
+    station.add(ring);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 128;
+    canvas.height = 128;
+    const context = canvas.getContext("2d");
+    context.fillStyle = "rgba(31, 34, 32, 0.9)";
+    context.beginPath();
+    context.arc(64, 64, 54, 0, TAU);
+    context.fill();
+    context.strokeStyle = "#ffd9a0";
+    context.lineWidth = 7;
+    context.stroke();
+    context.fillStyle = "#ffd9a0";
+    context.font = '900 72px "Segoe UI", sans-serif';
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText(route.symbol, 64, 62);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    const marker = new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        depthTest: false,
+        map: texture,
+        transparent: true,
+      }),
+    );
+    marker.position.set(0, 1.35, 0);
+    marker.scale.set(0.68, 0.68, 0.68);
+    station.add(marker);
+    stations.add(station);
+  }
+  app.groups.dynamic.add(stations);
+
+  let activeRoute = null;
+  let elapsed = 0;
+  let moved = false;
+
+  function nearbyRoute() {
+    return routes.find(
+      (route) =>
+        Math.abs(playerPosition.y - route.point.y) < 2.2 &&
+        Math.hypot(
+          playerPosition.x - route.point.x,
+          playerPosition.z - route.point.z,
+        ) < 2.4,
+    );
+  }
+
+  function interact() {
+    if (activeRoute) return true;
+    const route = nearbyRoute();
+    if (!route) return false;
+
+    activeRoute = route;
+    elapsed = 0;
+    moved = false;
+    fade.querySelector("strong").textContent = route.message;
+    fade.classList.add("active");
+    prompt?.classList.remove("show");
+    if (status) status.textContent = route.message;
+    return true;
+  }
+
+  function update(delta) {
+    if (activeRoute) {
+      elapsed += delta;
+      if (!moved && elapsed >= 0.45) {
+        onArrive(activeRoute.destination);
+        moved = true;
+      }
+      if (elapsed >= 1.05) {
+        fade.classList.remove("active");
+        if (status) status.textContent = "";
+        activeRoute = null;
+      }
+      return;
+    }
+
+    const route = nearbyRoute();
+    if (!route || !prompt) return;
+    prompt.textContent = route.prompt;
+    prompt.classList.add("show");
+  }
+
+  return {
+    get traveling() {
+      return Boolean(activeRoute);
+    },
+    digger,
+    generatorLower,
+    generatorUpper,
+    interact,
+    level144,
+    stations,
+    update,
+  };
+}
+
 function createCollisionGrid(roots) {
   const cells = new Map();
   const obstacles = [];
@@ -1214,6 +1383,15 @@ async function startGame() {
       typeof object === "string" ? shaft?.getObjectByName(object) : object,
     )
     .filter(Boolean);
+  const deepGroundMeshes = [
+    "deep/generator/matte",
+    "deep/generator/metal",
+    "deep/digger/matte",
+    "deep/digger/metal",
+    "deep/digger/rock",
+  ]
+    .map((name) => app.groups.world.getObjectByName(name))
+    .filter(Boolean);
   const cameraCollisionMeshes = [
     "helix0",
     "helix1",
@@ -1253,6 +1431,7 @@ async function startGame() {
   let npcSystem = null;
   let questSystem = null;
   let gapSystem = null;
+  let deepSystem = null;
   let cameraRigReady = false;
   let yaw = -Math.PI / 2;
   let pitch = -0.12;
@@ -1322,7 +1501,10 @@ async function startGame() {
     const radius = Math.hypot(point.x, point.z);
     const depth = -point.y / LEVEL_HEIGHT;
     const inGap = depth >= 89.5 && depth <= 92.5;
+    const belowSilo = point.y < -144 * LEVEL_HEIGHT - 0.5;
     if (inGap) {
+      if (radius < 1.8 || radius > 74.5) return null;
+    } else if (belowSilo) {
       if (radius < 1.8 || radius > 74.5) return null;
     } else if (radius < 5.6 || radius > 20.2) {
       return null;
@@ -1333,7 +1515,10 @@ async function startGame() {
     );
     raycaster.near = 0;
     raycaster.far = distance + lift;
-    return upwardHit(raycaster, inGap ? gapGroundMeshes : innerColliders);
+    return upwardHit(
+      raycaster,
+      inGap ? gapGroundMeshes : belowSilo ? deepGroundMeshes : innerColliders,
+    );
   }
 
   function groundBelow(point, lift = 1.2, distance = 3.2) {
@@ -1397,13 +1582,126 @@ async function startGame() {
     jumpQueued = false;
   }
 
-  gapSystem = createGapTraversal(position, (destination) => {
+  function updateLevelDisplay() {
+    const level =
+      position.y < -1140
+        ? 147
+        : position.y < -144 * LEVEL_HEIGHT - 0.5
+          ? 145
+          : THREE.MathUtils.clamp(
+              Math.round(-position.y / LEVEL_HEIGHT),
+              1,
+              144,
+            );
+    levelLabel.textContent = `LEVEL ${level}`;
+    if (sceneSubtitle) {
+      sceneSubtitle.textContent =
+        `LEVEL ${level} · 144 LEVELS · CUT OPEN · INTERACTIVE`;
+    }
+    return level;
+  }
+
+  function placePlayer(destination) {
     position.copy(destination);
     lastSafe.copy(destination);
     verticalVelocity = 0;
-    grounded = true;
+    grounded = Boolean(groundBelow(destination, 1, 3));
     jumpQueued = false;
+    keys.clear();
+    model.character.position.copy(position);
+    updateLevelDisplay();
+  }
+
+  gapSystem = createGapTraversal(position, placePlayer);
+  deepSystem = createDeepTraversal(app, position, placePlayer);
+
+  const floorTeleportButton = document.createElement("button");
+  floorTeleportButton.id = "floor-teleport";
+  floorTeleportButton.type = "button";
+  const detailCard = document.querySelector("#card");
+  const cardSubtitle = document.querySelector("#card-sub");
+  cardSubtitle?.insertAdjacentElement("afterend", floorTeleportButton);
+
+  const specialDestinations = {
+    gap: gapSystem.top,
+    generator: deepSystem.generatorUpper,
+    digger: deepSystem.digger,
+  };
+  const landingOffsets = [
+    [0, 0],
+    [1.5, 0],
+    [-1.5, 0],
+    [0, 1.5],
+    [0, -1.5],
+    [2.5, 2.5],
+    [-2.5, 2.5],
+    [2.5, -2.5],
+    [-2.5, -2.5],
+  ];
+
+  function findFloorDestination(poi) {
+    const special = specialDestinations[poi.id];
+    if (special) return special.clone();
+
+    const target = poi.kind === "room" ? poi.cam?.target : poi.anchor;
+    if (!target || !poi.level) return null;
+    const expectedY = -poi.level * LEVEL_HEIGHT;
+    for (const [offsetX, offsetZ] of landingOffsets) {
+      const candidate = new THREE.Vector3(
+        target[0] + offsetX,
+        expectedY + 0.4,
+        target[2] + offsetZ,
+      );
+      const ground = groundBelow(candidate, 2.5, 6);
+      if (ground && !wallCollisions.blocksCylinder(ground.point)) {
+        return ground.point;
+      }
+    }
+    return null;
+  }
+
+  function syncFloorTeleportButton() {
+    const poi = app.tour?.current;
+    const available = Boolean(poi?.level);
+    floorTeleportButton.hidden = !available;
+    if (!available) return;
+    const label = poi.id === "gap" ? "GO TO THE GAP" : `GO TO LEVEL ${poi.level}`;
+    if (floorTeleportButton.textContent !== label) {
+      floorTeleportButton.textContent = label;
+    }
+  }
+
+  floorTeleportButton.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const poi = app.tour?.current;
+    const destination = poi && findFloorDestination(poi);
+    if (!destination) {
+      status.textContent = "No safe landing point was found for this location.";
+      return;
+    }
+
+    const locationName =
+      document.querySelector("#card-title")?.textContent || poi.id;
+    placePlayer(destination);
+    yaw = Math.atan2(position.x, position.z);
+    app.tour.clear();
+    status.textContent = `Teleported to ${locationName} · Level ${poi.level}`;
+    setTimeout(() => {
+      if (status.textContent.startsWith("Teleported to")) status.textContent = "";
+    }, 3200);
   });
+
+  if (detailCard) {
+    new MutationObserver(syncFloorTeleportButton).observe(detailCard, {
+      attributeFilter: ["class"],
+      attributes: true,
+      characterData: true,
+      childList: true,
+      subtree: true,
+    });
+  }
+  syncFloorTeleportButton();
 
   const controlledKeys = new Set([
     "ArrowDown",
@@ -1429,7 +1727,9 @@ async function startGame() {
     if (
       event.code === "KeyE" &&
       !event.repeat &&
-      (questSystem?.interact() || gapSystem?.interact())
+      (questSystem?.interact() ||
+        gapSystem?.interact() ||
+        deepSystem?.interact())
     ) {
       keys.clear();
       return;
@@ -1516,7 +1816,11 @@ async function startGame() {
   app.onUpdate((delta) => {
     delta = Math.min(delta, 0.05);
     gapSystem?.update(delta);
-    const canMove = !questSystem?.dialogueOpen && !gapSystem?.traveling;
+    deepSystem?.update(delta);
+    const canMove =
+      !questSystem?.dialogueOpen &&
+      !gapSystem?.traveling &&
+      !deepSystem?.traveling;
     viewForward.set(-Math.sin(yaw), 0, -Math.cos(yaw));
     forward.copy(viewForward);
     right.crossVectors(forward, UP).normalize();
@@ -1575,7 +1879,7 @@ async function startGame() {
       }
     }
 
-    if (!gapSystem?.traveling) {
+    if (!gapSystem?.traveling && !deepSystem?.traveling) {
       if (grounded && jumpQueued) {
         verticalVelocity = 6.2;
         grounded = false;
@@ -1600,7 +1904,7 @@ async function startGame() {
     }
 
     if (
-      position.y < -1160 ||
+      position.y < WORLD_BOTTOM_Y ||
       position.y < lastSafe.y - MAX_FALL_LEVELS * LEVEL_HEIGHT
     ) {
       respawn();
@@ -1685,19 +1989,11 @@ async function startGame() {
     cameraLookTarget.y += Math.sin(pitch) * 2.5;
     cameraRigReady = true;
 
-    const level = THREE.MathUtils.clamp(
-      Math.round(-position.y / LEVEL_HEIGHT),
-      1,
-      144,
-    );
-    npcSystem?.update(delta, level);
+    const level = updateLevelDisplay();
+    npcSystem?.update(delta, Math.min(level, 144));
     questSystem?.update(delta);
     gapSystem?.update(0);
-    levelLabel.textContent = `LEVEL ${level}`;
-    if (sceneSubtitle) {
-      sceneSubtitle.textContent =
-        `LEVEL ${level} · 144 LEVELS · CUT OPEN · INTERACTIVE`;
-    }
+    deepSystem?.update(0);
   });
 
   window.__siloRun = {
@@ -1716,6 +2012,9 @@ async function startGame() {
     get gapSystem() {
       return gapSystem;
     },
+    get deepSystem() {
+      return deepSystem;
+    },
     groundBelow(x, y, z, lift = 1, distance = 3) {
       return groundBelow(new THREE.Vector3(x, y, z), lift, distance);
     },
@@ -1731,11 +2030,7 @@ async function startGame() {
       applyLookDelta(deltaX, deltaY);
     },
     teleport(x, y, z) {
-      position.set(x, y, z);
-      lastSafe.copy(position);
-      verticalVelocity = 0;
-      grounded = Boolean(groundBelow(position, 1, 2));
-      model.character.position.copy(position);
+      placePlayer(new THREE.Vector3(x, y, z));
     },
   };
 }
