@@ -3,6 +3,18 @@
 A private game layer running directly on Charly Delaroche's mirrored public
 interactive Silo 18 visualization.
 
+## Two builds
+
+| Build | Source | Silo geometry | Published? |
+| --- | --- | --- | --- |
+| **Full** (`npm start`) | `src/original-game.js` | Charly Delaroche's authored scene, mirrored locally into `site/` | **No** — local only |
+| **Prototype** (`npm run build:pages`) | `src/main.js`, `world.js`, `player.js` | Our own from-scratch approximation | Yes — GitHub Pages, `docs/` |
+
+Only the prototype is deployed publicly, because it contains none of the
+upstream visualization. The mirrored `site/` directory is third-party work with
+no license attached, so it is gitignored and must never be committed or
+published. The full build stays on your machine.
+
 Animated residents patrol the current neighborhood and nearby levels, avoiding
 the authored walls and recycling around the player as they travel through the
 Silo.
@@ -49,3 +61,13 @@ The animated adventurer is from Quaternius' [Ultimate Modular Men
 Pack](https://quaternius.com/packs/ultimatemodularcharacters.html), released
 under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). The
 original primitive character remains in the game as a loading/error fallback.
+
+## Publishing the prototype
+
+```sh
+npm run build:pages
+```
+
+Rebuilds `docs/` (bundled JS, HTML, CSS, `.nojekyll`). GitHub Pages serves it
+from the `main` branch `/docs` folder. All asset paths are relative, so it works
+unchanged under the `/silo-run/` base path.

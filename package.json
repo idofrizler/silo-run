@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build:pages": "rm -rf docs && mkdir -p docs && esbuild src/main.js --bundle --minify --outfile=docs/game.js && cp src/index.html docs/index.html && cp src/styles.css docs/styles.css && touch docs/.nojekyll",
     "build": "esbuild src/original-game.js --bundle --minify --sourcemap --outfile=site/game/game.js && mkdir -p site/game/models && cp src/game.css site/game/game.css && cp src/assets/models/adventurer.fbx site/game/models/adventurer.fbx && node scripts/prepare-game.mjs",
     "dev": "npm run build && node scripts/server.mjs",
     "mirror": "node scripts/mirror.mjs",
