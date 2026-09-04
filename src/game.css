@@ -242,7 +242,7 @@ body.game-ready #game-enter.hidden {
   z-index: 42;
   display: none;
   width: min(330px, calc(100vw - 40px));
-  padding: 13px 15px;
+  padding: 0;
   border: 1px solid var(--cp-border);
   border-left: 3px solid var(--cp-warning);
   border-radius: 0.625rem;
@@ -250,16 +250,34 @@ body.game-ready #game-enter.hidden {
   color: var(--cp-text);
   box-shadow: var(--cp-shadow);
   font-family: "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
-  pointer-events: none;
+  overflow: hidden;
+  pointer-events: auto;
 }
 
 #quest-tracker.show {
-  display: grid;
-  gap: 5px;
+  display: block;
 }
 
-#quest-tracker.complete {
-  border-left-color: var(--cp-success);
+#quest-summary {
+  display: grid;
+  gap: 5px;
+  width: 100%;
+  padding: 13px 15px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+#quest-summary:hover {
+  background: var(--cp-highlight);
+}
+
+.quest-summary-label {
+  color: var(--cp-text-soft);
+  font: 700 9px Consolas, "Courier New", monospace;
+  letter-spacing: 0.12em;
 }
 
 #quest-tracker strong {
@@ -268,13 +286,69 @@ body.game-ready #game-enter.hidden {
   letter-spacing: 0.12em;
 }
 
-#quest-tracker.complete strong {
-  color: var(--cp-success);
-}
-
 #quest-objective {
   color: var(--cp-text-muted);
   font-size: 13px;
+  line-height: 1.35;
+}
+
+#quest-list {
+  display: grid;
+  gap: 7px;
+  padding: 0 10px 10px;
+  border-top: 1px solid var(--cp-border);
+}
+
+#quest-list[hidden] {
+  display: none;
+}
+
+.quest-entry {
+  display: grid;
+  gap: 5px;
+  width: 100%;
+  padding: 10px 11px;
+  border: 1px solid var(--cp-border);
+  border-radius: 0.625rem;
+  background: var(--cp-surface-soft);
+  color: var(--cp-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.quest-entry:first-child {
+  margin-top: 10px;
+}
+
+.quest-entry:hover,
+.quest-entry.tracked {
+  border-color: var(--cp-warning);
+  background: var(--cp-highlight);
+}
+
+.quest-entry.complete {
+  border-color: var(--cp-success);
+}
+
+.quest-entry strong {
+  color: var(--cp-text);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+
+.quest-entry.complete strong {
+  color: var(--cp-success);
+}
+
+.quest-entry-meta {
+  color: var(--cp-warning);
+  font: 700 10px Consolas, "Courier New", monospace;
+  letter-spacing: 0.06em;
+}
+
+.quest-entry-objective {
+  color: var(--cp-text-muted);
+  font-size: 12px;
   line-height: 1.35;
 }
 

@@ -397,6 +397,17 @@ function createNpcSystem(app, source, wallCollisions, playerPosition) {
   ];
   const laneRadii = [21.3, 22.1, 22.9, 23.7, 24.5];
   const hueOffsets = [-0.12, -0.04, 0.06, 0.14, 0.24, 0.38, 0.52, 0.65];
+  const questResidents = new Map([
+    [0, { level: 67, name: "Mara" }],
+    [
+      1,
+      {
+        level: 144,
+        name: "Walker",
+        position: new THREE.Vector3(20, -144 * LEVEL_HEIGHT, 0),
+      },
+    ],
+  ]);
   const npcs = [];
   let anchorLevel = START_LEVEL;
 
@@ -458,7 +469,8 @@ function createNpcSystem(app, source, wallCollisions, playerPosition) {
     npcGroup.add(group);
 
     const mixer = new THREE.AnimationMixer(visual);
-    const stationary = index === 0;
+    const questResident = questResidents.get(index);
+    const stationary = Boolean(questResident);
     const animationClip = stationary ? idleClip : walkClip;
     const animation = animationClip ? mixer.clipAction(animationClip) : null;
     if (animation) {
@@ -471,19 +483,27 @@ function createNpcSystem(app, source, wallCollisions, playerPosition) {
       direction: index % 2 === 0 ? 1 : -1,
       group,
       index,
-      level: THREE.MathUtils.clamp(
-        anchorLevel + levelOffsets[index],
-        1,
-        144,
-      ),
+      level:
+        questResident?.level ??
+        THREE.MathUtils.clamp(anchorLevel + levelOffsets[index], 1, 144),
       mixer,
-      name: stationary ? "Mara" : `Resident ${index + 1}`,
+      name: questResident?.name ?? `Resident ${index + 1}`,
       position: new THREE.Vector3(),
       radius: laneRadii[index % laneRadii.length],
       speed: 1.15 + (index % 5) * 0.1,
       stationary,
     };
-    placeNpc(npc);
+    if (
+      questResident?.position &&
+      !wallCollisions.blocksCylinder(questResident.position, 0.34, 1.85)
+    ) {
+      npc.position.copy(questResident.position);
+      npc.group.position.copy(questResident.position);
+      npc.group.rotation.y = -Math.PI / 2;
+      npc.group.visible = true;
+    } else {
+      placeNpc(npc);
+    }
     npcs.push(npc);
   }
 
@@ -569,11 +589,15 @@ function createQuestMarker() {
   return { setSymbol, sprite };
 }
 
-function createFirstQuest(app, npcSystem, playerPosition) {
-  const questGiver = npcSystem.npcs[0];
+function createQuestSystem(app, npcSystem, playerPosition) {
+  const relicGiver = npcSystem.npcs[0];
+  const supplyGiver = npcSystem.npcs[1];
   const tracker = document.querySelector("#quest-tracker");
-  const trackerTitle = tracker?.querySelector("strong");
+  const summary = document.querySelector("#quest-summary");
+  const summaryLabel = tracker?.querySelector(".quest-summary-label");
+  const trackerTitle = document.querySelector("#quest-tracked-title");
   const objective = document.querySelector("#quest-objective");
+  const questList = document.querySelector("#quest-list");
   const prompt = document.querySelector("#quest-prompt");
   const dialogue = document.querySelector("#quest-dialogue");
   const speaker = document.querySelector("#quest-speaker");
@@ -581,8 +605,11 @@ function createFirstQuest(app, npcSystem, playerPosition) {
   const toast = document.querySelector("#quest-toast");
   if (
     !tracker ||
+    !summary ||
+    !summaryLabel ||
     !trackerTitle ||
     !objective ||
+    !questList ||
     !prompt ||
     !dialogue ||
     !speaker ||
@@ -592,8 +619,12 @@ function createFirstQuest(app, npcSystem, playerPosition) {
     throw new Error("The quest interface is missing from the page.");
   }
 
-  const marker = createQuestMarker();
-  questGiver.group.add(marker.sprite);
+  const relicMarker = createQuestMarker();
+  relicMarker.setSymbol("?");
+  relicGiver.group.add(relicMarker.sprite);
+  const supplyMarker = createQuestMarker();
+  supplyMarker.setSymbol("?");
+  supplyGiver.group.add(supplyMarker.sprite);
 
   const relic = new THREE.Group();
   relic.name = "last-green-token";
@@ -706,30 +737,133 @@ function createFirstQuest(app, npcSystem, playerPosition) {
   tape.visible = false;
   app.groups.dynamic.add(tape);
 
-  const introDialogue = [
+  const relicIntroDialogue = [
     "A porter once showed me a brass token from before the Rebellion. Said he hid it where the Silo still remembers sunlight.",
     "He called the hiding place a room where the Silo pretends the outside still exists. That was all he would tell me.",
   ];
-  const returnDialogue = [
+  const relicReturnDialogue = [
     "A tree under an open sky… so the stories weren’t invented here.",
     "Keep it. Just don’t let Judicial see you carrying it.",
   ];
   const supplyDialogue = [
-    "Mechanical needs a roll of tape that won’t split the first time it gets warm. Supply keeps insisting they’re good in Supply.",
+    "The seals on Juliette’s suit taught me what Supply calls good tape and what actually survives heat.",
     "Find the roll marked GOOD somewhere in their warehouse on Level 110. With all those racks, it may take some looking.",
   ];
 
-  let state = "talk";
-  let dialoguePages = null;
+  const quests = {
+    relic: {
+      giver: relicGiver,
+      id: "relic",
+      start: "LEVEL 67 · MARA",
+      state: "available",
+      title: "THE FORBIDDEN RELIC",
+      searchTime: 0,
+    },
+    supply: {
+      giver: supplyGiver,
+      id: "supply",
+      start: "LEVEL 144 · WALKER",
+      state: "available",
+      title: "THEY’RE GOOD IN SUPPLY",
+      searchTime: 0,
+    },
+  };
+  let trackedQuestId = "relic";
+  let journalOpen = false;
+  let dialogueSession = null;
   let dialogueIndex = 0;
   let toastTime = 4.5;
-  let searchTime = 0;
+  let journalSignature = "";
 
-  trackerTitle.textContent = "THE FORBIDDEN RELIC";
-  tracker.classList.add("show");
-  objective.textContent = "Talk to Mara, the resident with the gold quest marker.";
-  toast.textContent = "QUEST STARTED · THE FORBIDDEN RELIC";
+  toast.textContent = "2 QUESTS AVAILABLE · OPEN THE QUEST MENU";
   toast.classList.add("show");
+
+  function questObjective(quest) {
+    if (quest.id === "relic") {
+      if (quest.state === "available") {
+        return "Start on Level 67: talk to Mara, marked with a question mark.";
+      }
+      if (quest.state === "search") {
+        return quest.searchTime > 75
+          ? "Hint: Seek the place where the Silo manufactures daylight."
+          : "Find the brass token using Mara’s clues.";
+      }
+      if (quest.state === "return") {
+        return "Return to Mara on Level 67.";
+      }
+      return "Complete · The forbidden relic is yours.";
+    }
+
+    if (quest.state === "available") {
+      return "Start on Level 144: talk to Walker, marked with a question mark.";
+    }
+    if (quest.state === "search") {
+      return quest.searchTime > 90
+        ? "Hint: Check the open aisle beyond the deeper racks, beside the stacked spools."
+        : "Search Supply’s Level 110 warehouse for the roll marked GOOD.";
+    }
+    return "Complete · You found the GOOD tape.";
+  }
+
+  function questStateLabel(quest) {
+    if (quest.state === "available") return "AVAILABLE";
+    if (quest.state === "complete") return "COMPLETE";
+    return quest.id === trackedQuestId ? "TRACKING" : "IN PROGRESS";
+  }
+
+  function renderJournal(force = false) {
+    const completeCount = Object.values(quests).filter(
+      (quest) => quest.state === "complete",
+    ).length;
+    const signature = JSON.stringify({
+      completeCount,
+      journalOpen,
+      trackedQuestId,
+      states: Object.fromEntries(
+        Object.values(quests).map((quest) => [
+          quest.id,
+          [quest.state, questObjective(quest)],
+        ]),
+      ),
+    });
+    if (!force && signature === journalSignature) return;
+    journalSignature = signature;
+
+    const trackedQuest = quests[trackedQuestId];
+    summaryLabel.textContent =
+      `QUESTS · ${completeCount}/${Object.keys(quests).length} COMPLETE · ` +
+      (journalOpen ? "CLICK TO CLOSE" : "CLICK TO EXPAND");
+    trackerTitle.textContent = trackedQuest.title;
+    objective.textContent = questObjective(trackedQuest);
+    summary.setAttribute("aria-expanded", String(journalOpen));
+    questList.hidden = !journalOpen;
+    questList.innerHTML = Object.values(quests)
+      .map(
+        (quest) => `
+          <button
+            type="button"
+            class="quest-entry${quest.id === trackedQuestId ? " tracked" : ""}${quest.state === "complete" ? " complete" : ""}"
+            data-quest="${quest.id}"
+          >
+            <span class="quest-entry-meta">${questStateLabel(quest)} · ${quest.start}</span>
+            <strong>${quest.title}</strong>
+            <span class="quest-entry-objective">${questObjective(quest)}</span>
+          </button>
+        `,
+      )
+      .join("");
+    for (const button of questList.querySelectorAll(".quest-entry")) {
+      button.addEventListener("click", () => {
+        trackedQuestId = button.dataset.quest;
+        renderJournal(true);
+      });
+    }
+  }
+
+  summary.addEventListener("click", () => {
+    journalOpen = !journalOpen;
+    renderJournal(true);
+  });
 
   function showToast(message) {
     toast.textContent = message;
@@ -739,54 +873,60 @@ function createFirstQuest(app, npcSystem, playerPosition) {
 
   function closeDialogue() {
     dialogue.classList.remove("show");
-    dialoguePages = null;
+    dialogueSession = null;
     prompt.classList.remove("show");
     prompt.textContent = "";
   }
 
   function finishDialogue() {
+    const finishedSession = dialogueSession;
     closeDialogue();
-    if (state === "talk") {
-      state = "search";
-      marker.sprite.visible = false;
-      relic.visible = true;
-      searchTime = 0;
-      objective.textContent = "Find the brass token using Mara’s clues.";
-      showToast("NEW OBJECTIVE · FIND THE BRASS TOKEN");
-    } else if (state === "return") {
-      state = "supplyOffer";
-      marker.setSymbol("!");
-      marker.sprite.visible = true;
-      trackerTitle.textContent = "THEY’RE GOOD IN SUPPLY";
-      objective.textContent = "Talk to Mara about another job.";
-      showToast("QUEST COMPLETE · THE FORBIDDEN RELIC");
-    } else if (state === "supplyOffer") {
-      state = "supplySearch";
-      marker.sprite.visible = false;
-      tape.visible = true;
-      searchTime = 0;
-      objective.textContent =
-        "Search Supply’s Level 110 warehouse for the roll marked GOOD.";
-      showToast("QUEST STARTED · THEY’RE GOOD IN SUPPLY");
-    }
+    finishedSession?.onFinish();
   }
 
-  function openDialogue(pages) {
-    dialoguePages = pages;
+  function startRelicSearch() {
+    quests.relic.state = "search";
+    trackedQuestId = "relic";
+    relicMarker.sprite.visible = false;
+    relic.visible = true;
+    quests.relic.searchTime = 0;
+    showToast("NEW OBJECTIVE · FIND THE BRASS TOKEN");
+    renderJournal(true);
+  }
+
+  function completeRelicQuest() {
+    quests.relic.state = "complete";
+    relicMarker.sprite.visible = false;
+    showToast("QUEST COMPLETE · THE FORBIDDEN RELIC");
+    renderJournal(true);
+  }
+
+  function startSupplySearch() {
+    quests.supply.state = "search";
+    trackedQuestId = "supply";
+    supplyMarker.sprite.visible = false;
+    tape.visible = true;
+    quests.supply.searchTime = 0;
+    showToast("QUEST STARTED · THEY’RE GOOD IN SUPPLY");
+    renderJournal(true);
+  }
+
+  function openDialogue({ onFinish, pages, speakerLabel }) {
+    dialogueSession = { onFinish, pages };
     dialogueIndex = 0;
-    speaker.textContent = "MARA · LEVEL 67";
-    dialogueText.textContent = dialoguePages[dialogueIndex];
+    speaker.textContent = speakerLabel;
+    dialogueText.textContent = pages[dialogueIndex];
     dialogue.classList.add("show");
     prompt.classList.remove("show");
   }
 
   function advanceDialogue() {
     dialogueIndex += 1;
-    if (dialogueIndex >= dialoguePages.length) {
+    if (dialogueIndex >= dialogueSession.pages.length) {
       finishDialogue();
       return;
     }
-    dialogueText.textContent = dialoguePages[dialogueIndex];
+    dialogueText.textContent = dialogueSession.pages[dialogueIndex];
   }
 
   function near(point, distance) {
@@ -794,47 +934,62 @@ function createFirstQuest(app, npcSystem, playerPosition) {
   }
 
   function interact() {
-    if (dialoguePages) {
+    if (dialogueSession) {
       advanceDialogue();
       return true;
     }
 
     if (
-      (state === "talk" || state === "return" || state === "supplyOffer") &&
-      near(questGiver.position, 3.2)
+      (quests.relic.state === "available" ||
+        quests.relic.state === "return") &&
+      near(relicGiver.position, 3.2)
     ) {
-      openDialogue(
-        state === "talk"
-          ? introDialogue
-          : state === "return"
-            ? returnDialogue
-            : supplyDialogue,
-      );
+      openDialogue({
+        onFinish:
+          quests.relic.state === "available"
+            ? startRelicSearch
+            : completeRelicQuest,
+        pages:
+          quests.relic.state === "available"
+            ? relicIntroDialogue
+            : relicReturnDialogue,
+        speakerLabel: "MARA · LEVEL 67",
+      });
       return true;
     }
 
-    if (state === "search" && near(relic.position, 2.1)) {
-      state = "return";
+    if (
+      quests.supply.state === "available" &&
+      near(supplyGiver.position, 3.2)
+    ) {
+      openDialogue({
+        onFinish: startSupplySearch,
+        pages: supplyDialogue,
+        speakerLabel: "WALKER · LEVEL 144",
+      });
+      return true;
+    }
+
+    if (quests.relic.state === "search" && near(relic.position, 2.1)) {
+      quests.relic.state = "return";
       relic.visible = false;
-      marker.setSymbol("?");
-      marker.sprite.visible = true;
+      relicMarker.sprite.visible = true;
       prompt.classList.remove("show");
       prompt.textContent = "";
-      objective.textContent = "Bring the brass token back to Mara.";
       showToast(
         "RELIC FOUND · A brass token stamped with a tree beneath an open sky.",
       );
+      renderJournal(true);
       return true;
     }
 
-    if (state === "supplySearch" && near(tape.position, 2.5)) {
-      state = "supplyComplete";
+    if (quests.supply.state === "search" && near(tape.position, 2.5)) {
+      quests.supply.state = "complete";
       tape.visible = false;
-      tracker.classList.add("complete");
-      objective.textContent = "Quest complete · They’re Good in Supply";
       prompt.classList.remove("show");
       prompt.textContent = "";
       showToast("QUEST COMPLETE · FOUND THE GOOD TAPE");
+      renderJournal(true);
       return true;
     }
 
@@ -845,18 +1000,13 @@ function createFirstQuest(app, npcSystem, playerPosition) {
     toastTime -= delta;
     if (toastTime <= 0) toast.classList.remove("show");
 
-    if (state === "search" || state === "supplySearch") searchTime += delta;
-
-    if (state === "search" && searchTime > 75) {
-      objective.textContent =
-        "Hint: Seek the place where the Silo manufactures daylight.";
-    } else if (state === "supplySearch" && searchTime > 90) {
-      objective.textContent =
-        "Hint: Check the open aisle beyond the deeper racks, beside the stacked spools.";
-    }
+    if (quests.relic.state === "search") quests.relic.searchTime += delta;
+    if (quests.supply.state === "search") quests.supply.searchTime += delta;
+    renderJournal();
 
     const relicDistance = playerPosition.distanceTo(relic.position);
-    const glintVisible = state === "search" && relicDistance < 7;
+    const glintVisible =
+      quests.relic.state === "search" && relicDistance < 7;
     glint.visible = glintVisible;
     if (glintVisible) {
       glint.rotation.y += delta * 2.8;
@@ -864,7 +1014,8 @@ function createFirstQuest(app, npcSystem, playerPosition) {
       glint.scale.setScalar(pulse);
     }
     const tapeDistance = playerPosition.distanceTo(tape.position);
-    const tapeGlintVisible = state === "supplySearch" && tapeDistance < 8;
+    const tapeGlintVisible =
+      quests.supply.state === "search" && tapeDistance < 8;
     tapeGlint.visible = tapeGlintVisible;
     if (tapeGlintVisible) {
       tapeGlint.rotation.y += delta * 2.8;
@@ -872,20 +1023,32 @@ function createFirstQuest(app, npcSystem, playerPosition) {
       tapeGlint.scale.setScalar(pulse);
     }
 
-    if (dialoguePages) {
+    if (dialogueSession) {
       prompt.classList.remove("show");
       return;
     }
 
     let message = "";
     if (
-      (state === "talk" || state === "return" || state === "supplyOffer") &&
-      near(questGiver.position, 3.2)
+      (quests.relic.state === "available" ||
+        quests.relic.state === "return") &&
+      near(relicGiver.position, 3.2)
     ) {
       message = "E · Talk to Mara";
-    } else if (state === "search" && near(relic.position, 2.1)) {
+    } else if (
+      quests.supply.state === "available" &&
+      near(supplyGiver.position, 3.2)
+    ) {
+      message = "E · Talk to Walker";
+    } else if (
+      quests.relic.state === "search" &&
+      near(relic.position, 2.1)
+    ) {
       message = "E · Inspect the brass glint";
-    } else if (state === "supplySearch" && near(tape.position, 2.5)) {
+    } else if (
+      quests.supply.state === "search" &&
+      near(tape.position, 2.5)
+    ) {
       message = "E · Inspect the roll marked GOOD";
     }
 
@@ -893,15 +1056,20 @@ function createFirstQuest(app, npcSystem, playerPosition) {
     prompt.classList.toggle("show", Boolean(message));
   }
 
+  renderJournal(true);
+  tracker.classList.add("show");
+
   return {
     get dialogueOpen() {
-      return Boolean(dialoguePages);
+      return Boolean(dialogueSession);
     },
     get state() {
-      return state;
+      return quests[trackedQuestId].state;
     },
     interact,
-    questGiver,
+    quests,
+    relicGiver,
+    supplyGiver,
     relic,
     tape,
     update,
@@ -1448,7 +1616,7 @@ async function startGame() {
     const humanoid = await loadProfessionalCharacter(model);
     npcSystem = createNpcSystem(app, humanoid, wallCollisions, position);
     stylePlayerAsJuliette(model, humanoid);
-    questSystem = createFirstQuest(app, npcSystem, position);
+    questSystem = createQuestSystem(app, npcSystem, position);
   } catch (error) {
     console.error("Unable to initialize residents and quests.", error);
   }

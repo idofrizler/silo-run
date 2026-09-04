@@ -46,10 +46,10 @@ Controls:
 Select a named location in the floor menu, then use the button in its detail
 card to teleport directly to that floor.
 
-The first quest, **The Forbidden Relic**, begins automatically on Level 67.
-Talk to Mara and follow her environmental clues into the Gardens to recover the
-relic. Completing it unlocks **They’re Good in Supply**, a search for one useful
-roll of tape among the Level 110 warehouse racks.
+Open the quest tracker to view and select every available quest. **The
+Forbidden Relic** begins with Mara on Level 67, while **They’re Good in Supply**
+begins independently with Walker on Level 144. Their starting NPCs are marked
+with question marks, and each quest can be completed in either order.
 
 At **The Gap**, use the scaffold interaction near Level 90 or Level 92 to cross
 the missing stair section safely.

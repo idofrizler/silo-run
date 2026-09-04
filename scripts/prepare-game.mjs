@@ -75,10 +75,16 @@ const loadingUi = `<div id="game-loading">
   </div>
 </div>`;
 
-const questUi = `<aside id="quest-tracker">
-  <strong>THE FORBIDDEN RELIC</strong>
-  <span id="quest-objective"></span>
-</aside>
+const questTracker = `<aside id="quest-tracker" class="show">
+  <button id="quest-summary" type="button" aria-expanded="false">
+    <span class="quest-summary-label">QUESTS · CLICK TO EXPAND</span>
+    <strong id="quest-tracked-title">THE FORBIDDEN RELIC</strong>
+    <span id="quest-objective"></span>
+  </button>
+  <div id="quest-list" hidden></div>
+</aside>`;
+
+const questUi = `${questTracker}
 <div id="quest-prompt"></div>
 <section id="quest-dialogue" role="dialog" aria-live="polite">
   <strong id="quest-speaker"></strong>
@@ -111,6 +117,11 @@ if (!html.includes('id="quest-tracker"')) {
   html = html.replace(
     '<script type="module" src="./game/game.js"></script>',
     `${questUi}<script type="module" src="./game/game.js"></script>`,
+  );
+} else {
+  html = html.replace(
+    /<aside id="quest-tracker"[\s\S]*?<\/aside>/,
+    questTracker,
   );
 }
 

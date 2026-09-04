@@ -113,9 +113,13 @@ html[data-theme="dark"] {
 <div id="game-crosshair" aria-hidden="true"></div>
 <button id="game-enter" type="button"><strong>Enter Silo 18</strong><span>Click to capture the mouse</span></button>
 <div id="game-status" role="status"></div>
-<aside id="quest-tracker">
-  <strong>THE LAST GREEN TOKEN</strong>
-  <span id="quest-objective"></span>
+<aside id="quest-tracker" class="show">
+  <button id="quest-summary" type="button" aria-expanded="false">
+    <span class="quest-summary-label">QUESTS · CLICK TO EXPAND</span>
+    <strong id="quest-tracked-title">THE FORBIDDEN RELIC</strong>
+    <span id="quest-objective"></span>
+  </button>
+  <div id="quest-list" hidden></div>
 </aside>
 <div id="quest-prompt"></div>
 <section id="quest-dialogue" role="dialog" aria-live="polite">
