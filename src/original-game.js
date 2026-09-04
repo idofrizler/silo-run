@@ -903,7 +903,7 @@ function createQuestSystem(app, npcSystem, playerPosition) {
 
   const generatorRepair = new THREE.Group();
   generatorRepair.name = "generator-bearing-coupling";
-  generatorRepair.position.set(-24, -1124.97, -18);
+  generatorRepair.position.set(-35, -1118.15, -20);
   const coupling = new THREE.Mesh(
     new THREE.CylinderGeometry(0.38, 0.38, 0.12, 24),
     new THREE.MeshStandardMaterial({
@@ -953,7 +953,7 @@ function createQuestSystem(app, npcSystem, playerPosition) {
   ];
   const generatorIntroDialogue = [
     "Hear that rhythm under the Generator? Every seventh turn, the housing knocks back. That means the main bearing is starting to walk.",
-    "The Digger on Level 147 used the same old-size bearing. Find one down there, then install it at the marked coupling here on Generator.",
+    "The Digger on Level 147 used the same old-size bearing. Find one down there, then install it at the marked coupling inside the Generator.",
     "You’ll have to jump onto the drill blade to reach it. If you fall into the water, use the marked maintenance ladder to climb back up.",
   ];
   const generatorInstallDialogue = [
@@ -1046,7 +1046,7 @@ function createQuestSystem(app, npcSystem, playerPosition) {
         : "Find the bearing on The Digger’s blade on Level 147. Use the marked ladder to climb out of the water.";
     }
     if (quest.state === "install") {
-      return "Return to Generator Level 145 and install the bearing at the marked coupling.";
+      return "Return to Level 145 and install the bearing at the marked coupling inside the Generator.";
     }
     if (quest.state === "return") {
       return "Tell Shirley on Generator Level 145 that the knock is gone.";
