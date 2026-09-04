@@ -43,16 +43,21 @@ Controls:
 - `R`: respawn
 - `Esc`: release the mouse
 
+On touch devices, use the left joystick to move, drag the 3D view to look
+around, pinch to zoom, and use the ACT, JUMP, and RUN buttons on the right.
+
 Select a named location in the floor menu, then use the button in its detail
 card to teleport directly to that floor.
 
 Open the quest tracker to view and select every available quest. **The
-Forbidden Relic** begins with Mara on Level 67, while **They’re Good in Supply**
-begins independently with Walker on Level 144. Their starting NPCs are marked
-with question marks, and each quest can be completed in either order. Mara's
-trail runs through the Gardens and Judicial's relic holding before returning to
-her. Walker sends you to recover GOOD tape from Supply and deliver it to
-Sheriff's Holding 3 before a prisoner is sent out to clean.
+Forbidden Relic** begins with Mara on Level 67, **They’re Good in Supply**
+begins with Walker on Level 144, and **The Silo's Heart** begins with Shirley on
+Generator Level 145. Their starting NPCs are marked with question marks, and
+each quest can be completed independently. Mara's trail explicitly begins in
+the Gardens on Level 66 before leading to Judicial's relic holding. Walker sends
+you to recover GOOD tape from Supply and deliver it to Sheriff's Holding 3
+before a prisoner is sent out to clean. Shirley sends you into The Digger on
+Level 147 for an original bearing needed to steady the Generator.
 
 At **The Gap**, use the scaffold interaction near Level 90 or Level 92 to cross
 the missing stair section safely.

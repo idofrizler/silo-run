@@ -432,6 +432,14 @@ function createNpcSystem(app, source, wallCollisions, playerPosition) {
         position: new THREE.Vector3(49, -144 * LEVEL_HEIGHT, -10),
       },
     ],
+    [
+      2,
+      {
+        level: 145,
+        name: "Shirley",
+        position: new THREE.Vector3(-40, -1124.97, -13),
+      },
+    ],
   ]);
   const npcs = [];
   let anchorLevel = START_LEVEL;
@@ -507,6 +515,8 @@ function createNpcSystem(app, source, wallCollisions, playerPosition) {
         }
       });
       visual.scale.multiplyScalar(0.96);
+    } else if (index === 2) {
+      styleHumanoidHair(visual, 0x4c3529);
     }
     group.add(visual);
     npcGroup.add(group);
@@ -635,6 +645,7 @@ function createQuestMarker() {
 function createQuestSystem(app, npcSystem, playerPosition) {
   const relicGiver = npcSystem.npcs[0];
   const supplyGiver = npcSystem.npcs[1];
+  const generatorGiver = npcSystem.npcs[2];
   const tracker = document.querySelector("#quest-tracker");
   const summary = document.querySelector("#quest-summary");
   const summaryLabel = tracker?.querySelector(".quest-summary-label");
@@ -668,6 +679,9 @@ function createQuestSystem(app, npcSystem, playerPosition) {
   const supplyMarker = createQuestMarker();
   supplyMarker.setSymbol("?");
   supplyGiver.group.add(supplyMarker.sprite);
+  const generatorGiverMarker = createQuestMarker();
+  generatorGiverMarker.setSymbol("?");
+  generatorGiver.group.add(generatorGiverMarker.sprite);
 
   const gardenClue = new THREE.Group();
   gardenClue.name = "judicial-relic-intake-tag";
@@ -823,9 +837,82 @@ function createQuestSystem(app, npcSystem, playerPosition) {
   sheriffDropoff.visible = false;
   app.groups.dynamic.add(sheriffDropoff);
 
+  const bearing = new THREE.Group();
+  bearing.name = "digger-original-bearing";
+  bearing.position.set(-12, -1166.72, -18);
+  const bearingMetal = new THREE.MeshStandardMaterial({
+    color: 0x8d7352,
+    emissive: 0x3b260d,
+    emissiveIntensity: 0.22,
+    metalness: 0.88,
+    roughness: 0.3,
+  });
+  const bearingRing = new THREE.Mesh(
+    new THREE.TorusGeometry(0.22, 0.065, 12, 28),
+    bearingMetal,
+  );
+  bearingRing.rotation.x = Math.PI / 2;
+  bearing.add(bearingRing);
+  const bearingHub = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.08, 0.08, 0.1, 20),
+    bearingMetal,
+  );
+  bearing.add(bearingHub);
+  const bearingGlint = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.055),
+    new THREE.MeshBasicMaterial({
+      color: 0xffc56b,
+      transparent: true,
+      opacity: 0.92,
+    }),
+  );
+  bearingGlint.position.set(0.1, 0.24, 0);
+  bearing.add(bearingGlint);
+  bearing.visible = false;
+  app.groups.dynamic.add(bearing);
+
+  const bearingTarget = new THREE.Group();
+  bearingTarget.name = "digger-bearing-marker";
+  bearingTarget.position.set(-12, -1166.72, -18);
+  const bearingMarker = createQuestMarker();
+  bearingMarker.setSymbol("!");
+  bearingTarget.add(bearingMarker.sprite);
+  bearingTarget.visible = false;
+  app.groups.dynamic.add(bearingTarget);
+
+  const generatorRepair = new THREE.Group();
+  generatorRepair.name = "generator-bearing-coupling";
+  generatorRepair.position.set(-24, -1124.97, -18);
+  const coupling = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.38, 0.38, 0.12, 24),
+    new THREE.MeshStandardMaterial({
+      color: 0x3a403d,
+      metalness: 0.72,
+      roughness: 0.44,
+    }),
+  );
+  coupling.position.y = 0.06;
+  generatorRepair.add(coupling);
+  const couplingRing = new THREE.Mesh(
+    new THREE.TorusGeometry(0.27, 0.04, 10, 24),
+    new THREE.MeshBasicMaterial({ color: 0xe2a33b }),
+  );
+  couplingRing.position.y = 0.13;
+  couplingRing.rotation.x = Math.PI / 2;
+  generatorRepair.add(couplingRing);
+  const generatorRepairMarker = createQuestMarker();
+  generatorRepairMarker.setSymbol("!");
+  generatorRepair.add(generatorRepairMarker.sprite);
+  generatorRepair.visible = false;
+  app.groups.dynamic.add(generatorRepair);
+
   const relicIntroDialogue = [
     "A porter once showed me a brass token from before the Rebellion. Said he hid it where the Silo still remembers sunlight.",
-    "He called the hiding place a room where the Silo pretends the outside still exists. Find what he left there before Judicial erases the trail.",
+    "Search the Gardens on Level 66. He left something among the planting beds before Judicial erased his trail.",
+  ];
+  const intakeTagDialogue = [
+    "JUDICIAL INTAKE · CONFISCATED RELIC · ORIGIN: GARDENS. The destination line has been torn away.",
+    "The relic is gone. Where would the Silo lock away forbidden objects—behind wood, brass, and the Pact?",
   ];
   const relicReturnDialogue = [
     "You took it out of Judicial’s own relic holding? A tree under an open sky… so the stories weren’t invented here.",
@@ -838,6 +925,18 @@ function createQuestSystem(app, npcSystem, playerPosition) {
   const holdingDialogue = [
     "A hand reaches through the Holding 3 food hatch. You pass over the roll marked GOOD.",
     "From behind the door: “They’ll think they sealed the suit their way. Thank you.”",
+  ];
+  const generatorIntroDialogue = [
+    "Hear that rhythm under the Generator? Every seventh turn, the housing knocks back. That means the main bearing is starting to walk.",
+    "The Digger on Level 147 used the same old-size bearing. Find one down there, then install it at the marked coupling here on Generator.",
+  ];
+  const generatorInstallDialogue = [
+    "You seat the Digger bearing in the coupling and lock the retaining ring.",
+    "The next rotation passes without the knock. The Generator’s rhythm settles.",
+  ];
+  const generatorReturnDialogue = [
+    "Quiet on the seventh turn. You found one that still fit.",
+    "Most people think the Silo ends at Mechanical. You know now how much older machinery is still holding it up.",
   ];
 
   const quests = {
@@ -857,6 +956,14 @@ function createQuestSystem(app, npcSystem, playerPosition) {
       title: "THEY’RE GOOD IN SUPPLY",
       searchTime: 0,
     },
+    generator: {
+      giver: generatorGiver,
+      id: "generator",
+      start: "LEVEL 145 · SHIRLEY",
+      state: "available",
+      title: "THE SILO’S HEART",
+      searchTime: 0,
+    },
   };
   let trackedQuestId = "relic";
   let journalOpen = false;
@@ -865,7 +972,7 @@ function createQuestSystem(app, npcSystem, playerPosition) {
   let toastTime = 4.5;
   let journalSignature = "";
 
-  toast.textContent = "2 QUESTS AVAILABLE · OPEN THE QUEST MENU";
+  toast.textContent = "3 QUESTS AVAILABLE · OPEN THE QUEST MENU";
   toast.classList.add("show");
 
   function questObjective(quest) {
@@ -875,11 +982,13 @@ function createQuestSystem(app, npcSystem, playerPosition) {
       }
       if (quest.state === "search") {
         return quest.searchTime > 75
-          ? "Hint: Seek the place where the Silo manufactures daylight."
-          : "Follow Mara’s clue to the place that imitates the outside.";
+          ? "Hint: Search the outer planting beds in the Gardens on Level 66."
+          : "Search the Gardens on Level 66 for the porter’s discarded intake tag.";
       }
       if (quest.state === "recover") {
-        return "The intake tag points to Judicial’s relic holding on Level 14. Recover the brass token.";
+        return quest.searchTime > 75
+          ? "Hint: Seek the department of wood, brass, and the Pact."
+          : "The relic is gone. Where does the Silo lock away forbidden objects?";
       }
       if (quest.state === "return") {
         return "Bring the recovered relic back to Mara on Level 67.";
@@ -887,18 +996,36 @@ function createQuestSystem(app, npcSystem, playerPosition) {
       return "Complete · The relic was recovered from Judicial.";
     }
 
+    if (quest.id === "supply") {
+      if (quest.state === "available") {
+        return "Start on Level 144: talk to Walker, marked with a question mark.";
+      }
+      if (quest.state === "search") {
+        return quest.searchTime > 90
+          ? "Hint: Check the open aisle beyond the deeper racks, beside the stacked spools."
+          : "Search Supply’s Level 110 warehouse for the roll marked GOOD.";
+      }
+      if (quest.state === "deliver") {
+        return "Bring the GOOD tape to Sheriff’s Holding 3 on Level 1 before the cleaning.";
+      }
+      return "Complete · The GOOD tape reached Holding 3 in time.";
+    }
+
     if (quest.state === "available") {
-      return "Start on Level 144: talk to Walker, marked with a question mark.";
+      return "Start on Generator Level 145: talk to Shirley, marked with a question mark.";
     }
     if (quest.state === "search") {
-      return quest.searchTime > 90
-        ? "Hint: Check the open aisle beyond the deeper racks, beside the stacked spools."
-        : "Search Supply’s Level 110 warehouse for the roll marked GOOD.";
+      return quest.searchTime > 75
+        ? "Hint: Search beside the original machinery in The Digger."
+        : "Find an original bearing in The Digger on Level 147.";
     }
-    if (quest.state === "deliver") {
-      return "Bring the GOOD tape to Sheriff’s Holding 3 on Level 1 before the cleaning.";
+    if (quest.state === "install") {
+      return "Return to Generator Level 145 and install the bearing at the marked coupling.";
     }
-    return "Complete · The GOOD tape reached Holding 3 in time.";
+    if (quest.state === "return") {
+      return "Tell Shirley on Generator Level 145 that the knock is gone.";
+    }
+    return "Complete · The Generator’s rhythm is steady again.";
   }
 
   function questStateLabel(quest) {
@@ -926,11 +1053,15 @@ function createQuestSystem(app, npcSystem, playerPosition) {
     journalSignature = signature;
 
     const trackedQuest = quests[trackedQuestId];
+    const questCount = Object.keys(quests).length;
+    const remainingCount = questCount - completeCount;
     summaryLabel.textContent =
-      `QUESTS · ${completeCount}/${Object.keys(quests).length} COMPLETE · ` +
+      `QUESTS · ${completeCount}/${questCount} COMPLETE · ` +
       (journalOpen ? "CLICK TO CLOSE" : "CLICK TO EXPAND");
-    trackerTitle.textContent = trackedQuest.title;
-    objective.textContent = questObjective(trackedQuest);
+    trackerTitle.textContent = "QUEST JOURNAL";
+    objective.textContent = journalOpen
+      ? `${remainingCount} REMAINING · SELECT A QUEST BELOW`
+      : `${remainingCount} quests remaining · Open the journal to choose an objective.`;
     summary.setAttribute("aria-expanded", String(journalOpen));
     questList.hidden = !journalOpen;
     questList.innerHTML = Object.values(quests)
@@ -986,7 +1117,7 @@ function createQuestSystem(app, npcSystem, playerPosition) {
     relicMarker.sprite.visible = false;
     gardenClue.visible = true;
     quests.relic.searchTime = 0;
-    showToast("NEW OBJECTIVE · FOLLOW THE PORTER’S TRAIL");
+    showToast("NEW OBJECTIVE · SEARCH THE GARDENS · LEVEL 66");
     renderJournal(true);
   }
 
@@ -1012,6 +1143,43 @@ function createQuestSystem(app, npcSystem, playerPosition) {
     quests.supply.state = "complete";
     sheriffDropoff.visible = false;
     showToast("QUEST COMPLETE · THE GOOD TAPE REACHED HOLDING 3");
+    renderJournal(true);
+  }
+
+  function revealJudicialRelic() {
+    quests.relic.state = "recover";
+    quests.relic.searchTime = 0;
+    gardenClue.visible = false;
+    relic.visible = true;
+    judicialTarget.visible = true;
+    showToast("THE RELIC IS GONE · WHERE ARE FORBIDDEN OBJECTS KEPT?");
+    renderJournal(true);
+  }
+
+  function startGeneratorSearch() {
+    quests.generator.state = "search";
+    trackedQuestId = "generator";
+    generatorGiverMarker.sprite.visible = false;
+    bearing.visible = true;
+    bearingTarget.visible = true;
+    quests.generator.searchTime = 0;
+    showToast("NEW OBJECTIVE · FIND THE ORIGINAL BEARING · LEVEL 147");
+    renderJournal(true);
+  }
+
+  function finishBearingInstall() {
+    quests.generator.state = "return";
+    generatorRepair.visible = false;
+    generatorGiverMarker.setSymbol("!");
+    generatorGiverMarker.sprite.visible = true;
+    showToast("BEARING INSTALLED · REPORT TO SHIRLEY · LEVEL 145");
+    renderJournal(true);
+  }
+
+  function completeGeneratorQuest() {
+    quests.generator.state = "complete";
+    generatorGiverMarker.sprite.visible = false;
+    showToast("QUEST COMPLETE · THE SILO’S HEART");
     renderJournal(true);
   }
 
@@ -1074,15 +1242,31 @@ function createQuestSystem(app, npcSystem, playerPosition) {
       return true;
     }
 
+    if (
+      (quests.generator.state === "available" ||
+        quests.generator.state === "return") &&
+      near(generatorGiver.position, 3.2)
+    ) {
+      openDialogue({
+        onFinish:
+          quests.generator.state === "available"
+            ? startGeneratorSearch
+            : completeGeneratorQuest,
+        pages:
+          quests.generator.state === "available"
+            ? generatorIntroDialogue
+            : generatorReturnDialogue,
+        speakerLabel: "SHIRLEY · GENERATOR, LEVEL 145",
+      });
+      return true;
+    }
+
     if (quests.relic.state === "search" && near(gardenClue.position, 2.1)) {
-      quests.relic.state = "recover";
-      gardenClue.visible = false;
-      relic.visible = true;
-      judicialTarget.visible = true;
-      prompt.classList.remove("show");
-      prompt.textContent = "";
-      showToast("CLUE FOUND · JUDICIAL RELIC HOLDING · LEVEL 14");
-      renderJournal(true);
+      openDialogue({
+        onFinish: revealJudicialRelic,
+        pages: intakeTagDialogue,
+        speakerLabel: "JUDICIAL INTAKE TAG · GARDENS, LEVEL 66",
+      });
       return true;
     }
 
@@ -1123,6 +1307,30 @@ function createQuestSystem(app, npcSystem, playerPosition) {
       return true;
     }
 
+    if (quests.generator.state === "search" && near(bearing.position, 2.6)) {
+      quests.generator.state = "install";
+      bearing.visible = false;
+      bearingTarget.visible = false;
+      generatorRepair.visible = true;
+      prompt.classList.remove("show");
+      prompt.textContent = "";
+      showToast("BEARING FOUND · RETURN TO GENERATOR · LEVEL 145");
+      renderJournal(true);
+      return true;
+    }
+
+    if (
+      quests.generator.state === "install" &&
+      near(generatorRepair.position, 3.2)
+    ) {
+      openDialogue({
+        onFinish: finishBearingInstall,
+        pages: generatorInstallDialogue,
+        speakerLabel: "GENERATOR COUPLING · LEVEL 145",
+      });
+      return true;
+    }
+
     return false;
   }
 
@@ -1130,8 +1338,16 @@ function createQuestSystem(app, npcSystem, playerPosition) {
     toastTime -= delta;
     if (toastTime <= 0) toast.classList.remove("show");
 
-    if (quests.relic.state === "search") quests.relic.searchTime += delta;
+    if (
+      quests.relic.state === "search" ||
+      quests.relic.state === "recover"
+    ) {
+      quests.relic.searchTime += delta;
+    }
     if (quests.supply.state === "search") quests.supply.searchTime += delta;
+    if (quests.generator.state === "search") {
+      quests.generator.searchTime += delta;
+    }
     renderJournal();
 
     const clueDistance = playerPosition.distanceTo(gardenClue.position);
@@ -1161,6 +1377,15 @@ function createQuestSystem(app, npcSystem, playerPosition) {
       const pulse = 0.75 + Math.sin(performance.now() * 0.006) * 0.25;
       tapeGlint.scale.setScalar(pulse);
     }
+    const bearingDistance = playerPosition.distanceTo(bearing.position);
+    const bearingGlintVisible =
+      quests.generator.state === "search" && bearingDistance < 8;
+    bearingGlint.visible = bearingGlintVisible;
+    if (bearingGlintVisible) {
+      bearingGlint.rotation.y += delta * 2.8;
+      const pulse = 0.75 + Math.sin(performance.now() * 0.006) * 0.25;
+      bearingGlint.scale.setScalar(pulse);
+    }
 
     if (dialogueSession) {
       prompt.classList.remove("show");
@@ -1179,6 +1404,12 @@ function createQuestSystem(app, npcSystem, playerPosition) {
       near(supplyGiver.position, 3.2)
     ) {
       message = "E · Talk to Walker";
+    } else if (
+      (quests.generator.state === "available" ||
+        quests.generator.state === "return") &&
+      near(generatorGiver.position, 3.2)
+    ) {
+      message = "E · Talk to Shirley";
     } else if (
       quests.relic.state === "search" &&
       near(gardenClue.position, 2.1)
@@ -1199,6 +1430,16 @@ function createQuestSystem(app, npcSystem, playerPosition) {
       near(sheriffDropoff.position, 3.2)
     ) {
       message = "E · Pass the GOOD tape into Holding 3";
+    } else if (
+      quests.generator.state === "search" &&
+      near(bearing.position, 2.6)
+    ) {
+      message = "E · Take the original Digger bearing";
+    } else if (
+      quests.generator.state === "install" &&
+      near(generatorRepair.position, 3.2)
+    ) {
+      message = "E · Install the bearing in the Generator coupling";
     }
 
     prompt.textContent = message;
@@ -1219,6 +1460,10 @@ function createQuestSystem(app, npcSystem, playerPosition) {
     quests,
     relicGiver,
     supplyGiver,
+    generatorGiver,
+    bearing,
+    bearingTarget,
+    generatorRepair,
     gardenClue,
     judicialTarget,
     relic,
@@ -1738,6 +1983,15 @@ async function startGame() {
   const enterButton = document.querySelector("#game-enter");
   const levelLabel = document.querySelector("#game-level");
   const status = document.querySelector("#game-status");
+  const mobileStick = document.querySelector("#mobile-stick");
+  const mobileStickKnob = document.querySelector("#mobile-stick-knob");
+  const mobileInteractButton = document.querySelector("#mobile-interact");
+  const mobileJumpButton = document.querySelector("#mobile-jump");
+  const mobileRunButton = document.querySelector("#mobile-run");
+  const touchMode =
+    navigator.maxTouchPoints > 0 ||
+    matchMedia("(any-pointer: coarse)").matches;
+  const mobileInput = { forward: 0, side: 0 };
   const keys = new Set();
   const raycaster = new THREE.Raycaster();
   const cameraRaycaster = new THREE.Raycaster();
@@ -2040,6 +2294,25 @@ async function startGame() {
     "Space",
   ]);
 
+  function performInteraction() {
+    if (
+      questSystem?.interact() ||
+      gapSystem?.interact() ||
+      deepSystem?.interact()
+    ) {
+      keys.clear();
+      mobileInput.forward = 0;
+      mobileInput.side = 0;
+      return true;
+    }
+    return false;
+  }
+
+  function syncRunButton() {
+    mobileRunButton?.classList.toggle("active", running);
+    mobileRunButton?.setAttribute("aria-pressed", String(running));
+  }
+
   addEventListener("keydown", (event) => {
     if (controlledKeys.has(event.code)) {
       event.preventDefault();
@@ -2048,11 +2321,8 @@ async function startGame() {
     if (
       event.code === "KeyE" &&
       !event.repeat &&
-      (questSystem?.interact() ||
-        gapSystem?.interact() ||
-        deepSystem?.interact())
+      performInteraction()
     ) {
-      keys.clear();
       return;
     }
     if (
@@ -2060,6 +2330,7 @@ async function startGame() {
       (event.code === "ShiftLeft" || event.code === "ShiftRight")
     ) {
       running = !running;
+      syncRunButton();
     }
     keys.add(event.code);
     if (event.code === "Space") {
@@ -2111,12 +2382,149 @@ async function startGame() {
   }
   enterButton.addEventListener("pointerdown", (event) => {
     event.preventDefault();
+    if (touchMode) {
+      enterButton.classList.add("hidden");
+      status.textContent = "";
+      return;
+    }
     capturePointer();
   });
-  canvas.addEventListener("pointerdown", () => {
-    if (document.pointerLockElement !== canvas) capturePointer();
-  });
+  const touchLookPoints = new Map();
+  let pinchDistance = null;
+  canvas.addEventListener(
+    "pointerdown",
+    (event) => {
+      if (touchMode && event.pointerType === "touch") {
+        event.preventDefault();
+        enterButton.classList.add("hidden");
+        canvas.setPointerCapture(event.pointerId);
+        touchLookPoints.set(event.pointerId, {
+          x: event.clientX,
+          y: event.clientY,
+        });
+        if (touchLookPoints.size === 2) {
+          const [first, second] = [...touchLookPoints.values()];
+          pinchDistance = Math.hypot(
+            second.x - first.x,
+            second.y - first.y,
+          );
+        }
+        return;
+      }
+      if (document.pointerLockElement !== canvas) capturePointer();
+    },
+    { passive: false },
+  );
+  canvas.addEventListener(
+    "pointermove",
+    (event) => {
+      const previous = touchLookPoints.get(event.pointerId);
+      if (!previous) return;
+      event.preventDefault();
+      touchLookPoints.set(event.pointerId, {
+        x: event.clientX,
+        y: event.clientY,
+      });
+      if (touchLookPoints.size >= 2) {
+        const [first, second] = [...touchLookPoints.values()];
+        const distance = Math.hypot(
+          second.x - first.x,
+          second.y - first.y,
+        );
+        if (pinchDistance !== null) {
+          targetCameraDistance = THREE.MathUtils.clamp(
+            targetCameraDistance + (pinchDistance - distance) * 0.018,
+            2.4,
+            10,
+          );
+        }
+        pinchDistance = distance;
+      } else {
+        applyLookDelta(
+          event.clientX - previous.x,
+          event.clientY - previous.y,
+        );
+      }
+    },
+    { passive: false },
+  );
+  const finishTouchLook = (event) => {
+    if (!touchLookPoints.has(event.pointerId)) return;
+    touchLookPoints.delete(event.pointerId);
+    pinchDistance = null;
+  };
+  canvas.addEventListener("pointerup", finishTouchLook);
+  canvas.addEventListener("pointercancel", finishTouchLook);
+
+  if (touchMode) {
+    document.body.classList.add("mobile-controls-enabled");
+    enterButton.querySelector("strong").textContent = "Enter Silo 18";
+    enterButton.querySelector("span").textContent =
+      "Tap to start · Drag to look · Pinch to zoom";
+    const dialogueInstruction = document.querySelector(
+      "#quest-dialogue > span",
+    );
+    if (dialogueInstruction) {
+      dialogueInstruction.textContent = "Tap ACT to continue";
+    }
+
+    let stickPointer = null;
+    const resetStick = () => {
+      stickPointer = null;
+      mobileInput.forward = 0;
+      mobileInput.side = 0;
+      if (mobileStickKnob) {
+        mobileStickKnob.style.transform = "translate(-50%, -50%)";
+      }
+    };
+    const updateStick = (event) => {
+      const bounds = mobileStick.getBoundingClientRect();
+      const radius = bounds.width * 0.36;
+      const dx = event.clientX - (bounds.left + bounds.width / 2);
+      const dy = event.clientY - (bounds.top + bounds.height / 2);
+      const distance = Math.hypot(dx, dy);
+      const scale = distance > radius ? radius / distance : 1;
+      const x = dx * scale;
+      const y = dy * scale;
+      mobileInput.side = x / radius;
+      mobileInput.forward = -y / radius;
+      mobileStickKnob.style.transform =
+        `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
+    };
+    mobileStick?.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      stickPointer = event.pointerId;
+      mobileStick.setPointerCapture(event.pointerId);
+      updateStick(event);
+    });
+    mobileStick?.addEventListener("pointermove", (event) => {
+      if (event.pointerId !== stickPointer) return;
+      event.preventDefault();
+      updateStick(event);
+    });
+    mobileStick?.addEventListener("pointerup", resetStick);
+    mobileStick?.addEventListener("pointercancel", resetStick);
+    mobileInteractButton?.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      performInteraction();
+    });
+    mobileJumpButton?.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      jumpQueued = true;
+    });
+    mobileRunButton?.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      running = !running;
+      syncRunButton();
+    });
+  }
+
   document.addEventListener("pointerlockchange", () => {
+    if (touchMode) return;
     enterButton.classList.toggle("hidden", document.pointerLockElement === canvas);
     if (document.pointerLockElement === canvas) status.textContent = "";
   });
@@ -2146,12 +2554,22 @@ async function startGame() {
     forward.copy(viewForward);
     right.crossVectors(forward, UP).normalize();
     const forwardInput = canMove
-      ? Number(keys.has("KeyW") || keys.has("ArrowUp")) -
-        Number(keys.has("KeyS") || keys.has("ArrowDown"))
+      ? THREE.MathUtils.clamp(
+          Number(keys.has("KeyW") || keys.has("ArrowUp")) -
+            Number(keys.has("KeyS") || keys.has("ArrowDown")) +
+            mobileInput.forward,
+          -1,
+          1,
+        )
       : 0;
     const sideInput = canMove
-      ? Number(keys.has("KeyD") || keys.has("ArrowRight")) -
-        Number(keys.has("KeyA") || keys.has("ArrowLeft"))
+      ? THREE.MathUtils.clamp(
+          Number(keys.has("KeyD") || keys.has("ArrowRight")) -
+            Number(keys.has("KeyA") || keys.has("ArrowLeft")) +
+            mobileInput.side,
+          -1,
+          1,
+        )
       : 0;
     movement
       .set(0, 0, 0)
@@ -2315,6 +2733,12 @@ async function startGame() {
     questSystem?.update(delta);
     gapSystem?.update(0);
     deepSystem?.update(0);
+    if (touchMode) {
+      const prompt = document.querySelector("#quest-prompt");
+      if (prompt?.textContent.startsWith("E ·")) {
+        prompt.textContent = prompt.textContent.replace(/^E ·/, "ACT ·");
+      }
+    }
   });
 
   window.__siloRun = {
@@ -2343,6 +2767,18 @@ async function startGame() {
     respawn,
     get running() {
       return running;
+    },
+    get cameraDistance() {
+      return cameraDistance;
+    },
+    get targetCameraDistance() {
+      return targetCameraDistance;
+    },
+    get touchMode() {
+      return touchMode;
+    },
+    get yaw() {
+      return yaw;
     },
     setYaw(value) {
       yaw = value;

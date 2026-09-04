@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { copyFile, readFile, writeFile } from "node:fs/promises";
 
 const indexPath = new URL("../site/index.html", import.meta.url);
 let html = await readFile(indexPath, "utf8");
@@ -78,7 +78,7 @@ const loadingUi = `<div id="game-loading">
 const questTracker = `<aside id="quest-tracker" class="show">
   <button id="quest-summary" type="button" aria-expanded="false">
     <span class="quest-summary-label">QUESTS · CLICK TO EXPAND</span>
-    <strong id="quest-tracked-title">THE FORBIDDEN RELIC</strong>
+    <strong id="quest-tracked-title">QUEST JOURNAL</strong>
     <span id="quest-objective"></span>
   </button>
   <div id="quest-list" hidden></div>
@@ -93,13 +93,24 @@ const questUi = `${questTracker}
 </section>
 <div id="quest-toast" role="status"></div>`;
 
+const mobileUi = `<div id="mobile-controls" aria-label="Touch controls">
+  <div id="mobile-stick" aria-label="Movement joystick">
+    <span id="mobile-stick-knob"></span>
+  </div>
+  <div id="mobile-actions">
+    <button id="mobile-interact" type="button">ACT</button>
+    <button id="mobile-jump" type="button">JUMP</button>
+    <button id="mobile-run" type="button" aria-pressed="false">RUN</button>
+  </div>
+</div>`;
+
 const gameUi = `${loadingUi}<div id="game-hud">
   <div class="game-brand"><strong>SILO RUN</strong><span id="game-level">LEVEL 67</span></div>
   <div class="game-help"><span>WASD move</span><span>Mouse aim</span><span>Scroll zoom</span><span>E interact</span><span>Shift toggle run</span><span>Space jump</span><span>R reset</span></div>
 </div>
 <div id="game-crosshair" aria-hidden="true"></div>
 <button id="game-enter" type="button"><strong>Enter Silo 18</strong><span>Click to capture the mouse</span></button>
-<div id="game-status" role="status"></div>${questUi}
+<div id="game-status" role="status"></div>${questUi}${mobileUi}
 <script type="module" src="./game/game.js"></script>`;
 
 if (!html.includes("./game/game.js")) {
@@ -125,6 +136,13 @@ if (!html.includes('id="quest-tracker"')) {
   );
 }
 
+if (!html.includes('id="mobile-controls"')) {
+  html = html.replace(
+    '<script type="module" src="./game/game.js"></script>',
+    `${mobileUi}<script type="module" src="./game/game.js"></script>`,
+  );
+}
+
 html = html.replace("<span>Mouse camera</span>", "<span>Mouse aim</span>");
 if (!html.includes("<span>Scroll zoom</span>")) {
   html = html.replace(
@@ -143,4 +161,65 @@ html = html.replace(
   "<span>Shift toggle run</span>",
 );
 
-await writeFile(indexPath, html);
+function setMeta(attribute, key, content) {
+  const expression = new RegExp(
+    `<meta\\s+${attribute}="${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"[^>]*>`,
+  );
+  const tag = `<meta ${attribute}="${key}" content="${content}" />`;
+  html = expression.test(html)
+    ? html.replace(expression, tag)
+    : html.replace("</head>", `  ${tag}\n</head>`);
+}
+
+html = html.replace(/<title>.*?<\/title>/, "<title>Silo Run</title>");
+html = html.replace(
+  /<link rel="canonical"[^>]*>/,
+  '<link rel="canonical" href="https://idofrizler.github.io/silo-run/" />',
+);
+setMeta(
+  "name",
+  "description",
+  "Explore Silo 18 as Juliette, follow clues across 147 levels, help its residents, and uncover what waits below Mechanical.",
+);
+setMeta("property", "og:type", "website");
+setMeta("property", "og:site_name", "Silo Run");
+setMeta("property", "og:title", "Silo Run · Explore Silo 18");
+setMeta(
+  "property",
+  "og:description",
+  "A third-person exploration game across Silo 18. Take quests, uncover forbidden relics, and descend below Mechanical.",
+);
+setMeta("property", "og:url", "https://idofrizler.github.io/silo-run/");
+setMeta(
+  "property",
+  "og:image",
+  "https://idofrizler.github.io/silo-run/preview.jpg",
+);
+setMeta("property", "og:image:type", "image/jpeg");
+setMeta("property", "og:image:width", "1100");
+setMeta("property", "og:image:height", "800");
+setMeta(
+  "property",
+  "og:image:alt",
+  "Silo Run gameplay inside the Generator on Level 145",
+);
+setMeta("name", "twitter:card", "summary_large_image");
+setMeta("name", "twitter:title", "Silo Run · Explore Silo 18");
+setMeta(
+  "name",
+  "twitter:description",
+  "Take quests and explore all the way from the Surface to The Digger.",
+);
+setMeta(
+  "name",
+  "twitter:image",
+  "https://idofrizler.github.io/silo-run/preview.jpg",
+);
+
+await Promise.all([
+  writeFile(indexPath, html),
+  copyFile(
+    new URL("../src/assets/silo-run-preview.jpg", import.meta.url),
+    new URL("../site/preview.jpg", import.meta.url),
+  ),
+]);
