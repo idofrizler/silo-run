@@ -100,6 +100,7 @@ const mobileUi = `<div id="mobile-controls" aria-label="Touch controls">
   <div id="mobile-stick" aria-label="Movement joystick">
     <span id="mobile-stick-knob"></span>
   </div>
+  <button id="mobile-floor-toggle" type="button" aria-expanded="false">FLOORS</button>
   <div id="mobile-actions">
     <button id="mobile-interact" type="button">ACT</button>
     <button id="mobile-jump" type="button">JUMP</button>
@@ -142,6 +143,12 @@ if (!html.includes('id="mobile-controls"')) {
   html = html.replace(
     '<script type="module" src="./game/game.js"></script>',
     `${mobileUi}<script type="module" src="./game/game.js"></script>`,
+  );
+}
+if (!html.includes('id="mobile-floor-toggle"')) {
+  html = html.replace(
+    '<div id="mobile-actions">',
+    '<button id="mobile-floor-toggle" type="button" aria-expanded="false">FLOORS</button>\n  <div id="mobile-actions">',
   );
 }
 

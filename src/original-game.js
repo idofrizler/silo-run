@@ -2056,6 +2056,7 @@ async function startGame() {
   const mobileStickKnob = document.querySelector("#mobile-stick-knob");
   const mobileInteractButton = document.querySelector("#mobile-interact");
   const mobileJumpButton = document.querySelector("#mobile-jump");
+  const mobileFloorToggle = document.querySelector("#mobile-floor-toggle");
   const touchMode =
     navigator.maxTouchPoints > 0 ||
     matchMedia("(any-pointer: coarse)").matches;
@@ -2494,8 +2495,8 @@ async function startGame() {
         pinchDistance = distance;
       } else {
         applyLookDelta(
-          previous.x - event.clientX,
-          previous.y - event.clientY,
+          event.clientX - previous.x,
+          event.clientY - previous.y,
         );
       }
     },
@@ -2567,6 +2568,17 @@ async function startGame() {
       event.preventDefault();
       event.stopPropagation();
       jumpQueued = true;
+    });
+    mobileFloorToggle?.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const open = document.body.classList.toggle("mobile-floors-open");
+      mobileFloorToggle.setAttribute("aria-expanded", String(open));
+    });
+    document.querySelector("#legend")?.addEventListener("click", (event) => {
+      if (!event.target.closest(".legend-item")) return;
+      document.body.classList.remove("mobile-floors-open");
+      mobileFloorToggle?.setAttribute("aria-expanded", "false");
     });
   }
 
