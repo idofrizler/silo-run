@@ -38,13 +38,12 @@ Controls:
 - Mouse: aim the camera and movement direction
 - Mouse wheel: zoom the camera in and out
 - `E`: talk to residents and inspect quest objects
-- `Shift`: toggle walking/running
 - `Space`: jump
 - `R`: respawn
 - `Esc`: release the mouse
 
 On touch devices, use the left joystick to move, drag the 3D view to look
-around, pinch to zoom, and use the ACT, JUMP, and RUN buttons on the right.
+around, pinch to zoom, and use the ACT and JUMP buttons on the right.
 
 Select a named location in the floor menu, then use the button in its detail
 card to teleport directly to that floor.

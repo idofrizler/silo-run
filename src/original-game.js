@@ -918,6 +918,10 @@ function createQuestSystem(app, npcSystem, playerPosition) {
     "You took it out of Judicial’s own relic holding? A tree under an open sky… so the stories weren’t invented here.",
     "Keep it hidden. Judicial will notice the empty place soon enough.",
   ];
+  const relicPickupDialogue = [
+    "You lift the brass token from the evidence desk. A tree spreads beneath an open sky on its worn face.",
+    "The intake number matches Mara’s porter. Get it back to her on Level 67 before Judicial notices the empty slot.",
+  ];
   const supplyDialogue = [
     "Someone in Holding 3 is being sent out to clean at shift change. The tape Supply issued for the suit seal won’t survive the heat.",
     "Find the roll marked GOOD in their Level 110 warehouse, then get it to the Sheriff’s station before they lock the airlock.",
@@ -1129,6 +1133,15 @@ function createQuestSystem(app, npcSystem, playerPosition) {
     renderJournal(true);
   }
 
+  function takeJudicialRelic() {
+    quests.relic.state = "return";
+    relic.visible = false;
+    judicialTarget.visible = false;
+    relicMarker.sprite.visible = true;
+    showToast("RELIC RECOVERED · RETURN TO MARA · LEVEL 67");
+    renderJournal(true);
+  }
+
   function startSupplySearch() {
     quests.supply.state = "search";
     trackedQuestId = "supply";
@@ -1271,16 +1284,11 @@ function createQuestSystem(app, npcSystem, playerPosition) {
     }
 
     if (quests.relic.state === "recover" && near(relic.position, 2.5)) {
-      quests.relic.state = "return";
-      relic.visible = false;
-      judicialTarget.visible = false;
-      relicMarker.sprite.visible = true;
-      prompt.classList.remove("show");
-      prompt.textContent = "";
-      showToast(
-        "RELIC FOUND · A brass token stamped with a tree beneath an open sky.",
-      );
-      renderJournal(true);
+      openDialogue({
+        onFinish: takeJudicialRelic,
+        pages: relicPickupDialogue,
+        speakerLabel: "FORBIDDEN RELIC · JUDICIAL HOLDING",
+      });
       return true;
     }
 
@@ -1987,7 +1995,6 @@ async function startGame() {
   const mobileStickKnob = document.querySelector("#mobile-stick-knob");
   const mobileInteractButton = document.querySelector("#mobile-interact");
   const mobileJumpButton = document.querySelector("#mobile-jump");
-  const mobileRunButton = document.querySelector("#mobile-run");
   const touchMode =
     navigator.maxTouchPoints > 0 ||
     matchMedia("(any-pointer: coarse)").matches;
@@ -2016,7 +2023,6 @@ async function startGame() {
   let grounded = false;
   let jumpQueued = false;
   let walkTime = 0;
-  let running = false;
   model.character.rotation.y = Math.PI / 2;
 
   try {
@@ -2289,8 +2295,6 @@ async function startGame() {
     "KeyR",
     "KeyS",
     "KeyW",
-    "ShiftLeft",
-    "ShiftRight",
     "Space",
   ]);
 
@@ -2308,11 +2312,6 @@ async function startGame() {
     return false;
   }
 
-  function syncRunButton() {
-    mobileRunButton?.classList.toggle("active", running);
-    mobileRunButton?.setAttribute("aria-pressed", String(running));
-  }
-
   addEventListener("keydown", (event) => {
     if (controlledKeys.has(event.code)) {
       event.preventDefault();
@@ -2324,13 +2323,6 @@ async function startGame() {
       performInteraction()
     ) {
       return;
-    }
-    if (
-      !event.repeat &&
-      (event.code === "ShiftLeft" || event.code === "ShiftRight")
-    ) {
-      running = !running;
-      syncRunButton();
     }
     keys.add(event.code);
     if (event.code === "Space") {
@@ -2515,12 +2507,6 @@ async function startGame() {
       event.stopPropagation();
       jumpQueued = true;
     });
-    mobileRunButton?.addEventListener("pointerdown", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      running = !running;
-      syncRunButton();
-    });
   }
 
   document.addEventListener("pointerlockchange", () => {
@@ -2578,8 +2564,7 @@ async function startGame() {
 
     const moving = movement.lengthSq() > 0;
     if (moving) movement.normalize();
-    const sprinting = running;
-    const speed = sprinting ? 8.5 : 4.8;
+    const speed = 10;
     const displacement = movement.clone().multiplyScalar(speed * delta);
     const steps = Math.max(1, Math.ceil(displacement.length() / 0.2));
     displacement.multiplyScalar(1 / steps);
@@ -2656,11 +2641,11 @@ async function startGame() {
         targetRotation,
         1 - Math.exp(-12 * delta),
       );
-      walkTime += delta * (sprinting ? 12 : 8);
+      walkTime += delta * 13.5;
     }
     const stride = moving && grounded ? Math.sin(walkTime) * 0.55 : 0;
     if (model.mixer) {
-      model.setAnimation(moving ? (sprinting ? "run" : "walk") : "idle");
+      model.setAnimation(moving ? "run" : "idle");
       model.mixer.update(delta);
     } else {
       model.limbs.leftArm.rotation.x = stride;
@@ -2765,9 +2750,6 @@ async function startGame() {
     },
     position,
     respawn,
-    get running() {
-      return running;
-    },
     get cameraDistance() {
       return cameraDistance;
     },
