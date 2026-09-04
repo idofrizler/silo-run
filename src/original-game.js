@@ -2494,8 +2494,8 @@ async function startGame() {
         pinchDistance = distance;
       } else {
         applyLookDelta(
-          event.clientX - previous.x,
-          event.clientY - previous.y,
+          previous.x - event.clientX,
+          previous.y - event.clientY,
         );
       }
     },
