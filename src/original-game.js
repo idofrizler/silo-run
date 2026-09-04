@@ -248,9 +248,9 @@ async function loadProfessionalCharacter(model) {
   return humanoid;
 }
 
-function stylePlayerAsJuliette(model, humanoid) {
+function styleHumanoidHair(humanoid, color) {
   const headMesh = humanoid.getObjectByName("Adventurer_Head");
-  if (!headMesh?.geometry) return;
+  if (!headMesh?.geometry) return null;
 
   const headMaterials = Array.isArray(headMesh?.material)
     ? [...headMesh.material]
@@ -258,13 +258,13 @@ function stylePlayerAsJuliette(model, humanoid) {
   const hairMaterialIndex = headMaterials.findIndex(
     (material) => material.name.toLowerCase() === "hair",
   );
-  if (hairMaterialIndex < 0) return;
+  if (hairMaterialIndex < 0) return null;
 
-  const blondeHair = headMaterials[hairMaterialIndex].clone();
-  blondeHair.color.setHex(0xb89a5a);
-  blondeHair.roughness = 0.88;
-  blondeHair.visible = true;
-  headMaterials[hairMaterialIndex] = blondeHair;
+  const hair = headMaterials[hairMaterialIndex].clone();
+  hair.color.setHex(color);
+  hair.roughness = 0.88;
+  hair.visible = true;
+  headMaterials[hairMaterialIndex] = hair;
   headMesh.material = headMaterials;
 
   const sourceGeometry = headMesh.geometry;
@@ -317,6 +317,12 @@ function stylePlayerAsJuliette(model, humanoid) {
     geometry.addGroup(group.start, group.count, group.materialIndex);
   }
   headMesh.geometry = geometry;
+  return headMesh;
+}
+
+function stylePlayerAsJuliette(model, humanoid) {
+  const headMesh = styleHumanoidHair(humanoid, 0xb89a5a);
+  if (!headMesh) return;
   model.hair = headMesh;
 }
 
@@ -375,6 +381,25 @@ function lockToSilo18(app) {
   }
 }
 
+function mergeMechanicalLegend() {
+  const legend = document.querySelector("#legend");
+  if (!legend) return;
+
+  const enforce = () => {
+    const mechanical = legend.querySelector('[data-id="walker"]');
+    const duplicate = legend.querySelector('[data-id="mechcafe"]');
+    const name = mechanical?.querySelector(".name");
+    if (name) name.textContent = "Mechanical";
+    duplicate?.remove();
+  };
+
+  enforce();
+  new MutationObserver(enforce).observe(legend, {
+    childList: true,
+    subtree: true,
+  });
+}
+
 function createNpcSystem(app, source, wallCollisions, playerPosition) {
   const npcGroup = new THREE.Group();
   npcGroup.name = "silo-run-npcs";
@@ -404,7 +429,7 @@ function createNpcSystem(app, source, wallCollisions, playerPosition) {
       {
         level: 144,
         name: "Walker",
-        position: new THREE.Vector3(20, -144 * LEVEL_HEIGHT, 0),
+        position: new THREE.Vector3(49, -144 * LEVEL_HEIGHT, -10),
       },
     ],
   ]);
@@ -465,6 +490,24 @@ function createNpcSystem(app, source, wallCollisions, playerPosition) {
     group.name = `silo-resident-${index + 1}`;
     const visual = cloneSkeleton(source);
     recolorClothing(visual, index);
+    if (index === 1) {
+      styleHumanoidHair(visual, 0xaaa49a);
+      visual.traverse((object) => {
+        if (!object.isMesh) return;
+        const materials = Array.isArray(object.material)
+          ? object.material
+          : [object.material];
+        for (const material of materials) {
+          const name = material.name.toLowerCase();
+          if (material.color && name.includes("skin")) {
+            material.color.lerp(new THREE.Color(0xc18d73), 0.28);
+          } else if (material.color && name.includes("eyebrow")) {
+            material.color.setHex(0x6e6860);
+          }
+        }
+      });
+      visual.scale.multiplyScalar(0.96);
+    }
     group.add(visual);
     npcGroup.add(group);
 
@@ -1511,6 +1554,7 @@ async function startGame() {
   app.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
   app.resize();
   lockToSilo18(app);
+  mergeMechanicalLegend();
   const navigationLight = stabilizeLighting(app);
 
   const completedHalf = completeSilo(app);
