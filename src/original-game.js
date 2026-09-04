@@ -472,7 +472,14 @@ function createNpcSystem(app, source, wallCollisions, playerPosition) {
   const laneRadii = [21.3, 22.1, 22.9, 23.7, 24.5];
   const hueOffsets = [-0.12, -0.04, 0.06, 0.14, 0.24, 0.38, 0.52, 0.65];
   const questResidents = new Map([
-    [0, { level: 67, name: "Mara" }],
+    [
+      0,
+      {
+        level: 67,
+        name: "Mara",
+        position: new THREE.Vector3(-16.9, -67 * LEVEL_HEIGHT, -15.5),
+      },
+    ],
     [
       1,
       {
@@ -780,7 +787,7 @@ function createQuestSystem(app, npcSystem, playerPosition) {
 
   const relic = new THREE.Group();
   relic.name = "last-green-token";
-  relic.position.set(-42, -14 * LEVEL_HEIGHT + 1.05, -12);
+  relic.position.set(-59, -14 * LEVEL_HEIGHT + 0.08, -2);
 
   const brass = new THREE.MeshStandardMaterial({
     color: 0xa9782c,
@@ -828,15 +835,6 @@ function createQuestSystem(app, npcSystem, playerPosition) {
   relic.visible = false;
 
   app.groups.dynamic.add(relic);
-
-  const judicialTarget = new THREE.Group();
-  judicialTarget.name = "judicial-relic-holding-marker";
-  judicialTarget.position.set(-42, -14 * LEVEL_HEIGHT, -12);
-  const judicialMarker = createQuestMarker();
-  judicialMarker.setSymbol("!");
-  judicialTarget.add(judicialMarker.sprite);
-  judicialTarget.visible = false;
-  app.groups.dynamic.add(judicialTarget);
 
   const tape = new THREE.Group();
   tape.name = "good-supply-tape";
@@ -1199,7 +1197,6 @@ function createQuestSystem(app, npcSystem, playerPosition) {
   function completeRelicQuest() {
     quests.relic.state = "complete";
     relicMarker.sprite.visible = false;
-    judicialTarget.visible = false;
     showToast("QUEST COMPLETE · THE FORBIDDEN RELIC");
     renderJournal(true);
   }
@@ -1207,7 +1204,6 @@ function createQuestSystem(app, npcSystem, playerPosition) {
   function takeJudicialRelic() {
     quests.relic.state = "return";
     relic.visible = false;
-    judicialTarget.visible = false;
     relicMarker.sprite.visible = true;
     showToast("RELIC RECOVERED · RETURN TO MARA · LEVEL 67");
     renderJournal(true);
@@ -1235,7 +1231,6 @@ function createQuestSystem(app, npcSystem, playerPosition) {
     quests.relic.searchTime = 0;
     gardenClue.visible = false;
     relic.visible = true;
-    judicialTarget.visible = true;
     showToast("THE RELIC IS GONE · WHERE ARE FORBIDDEN OBJECTS KEPT?");
     renderJournal(true);
   }
@@ -1358,7 +1353,7 @@ function createQuestSystem(app, npcSystem, playerPosition) {
       openDialogue({
         onFinish: takeJudicialRelic,
         pages: relicPickupDialogue,
-        speakerLabel: "FORBIDDEN RELIC · JUDICIAL HOLDING",
+        speakerLabel: "FORBIDDEN RELIC · JUDICIAL RELIC STORAGE",
       });
       return true;
     }
@@ -1498,7 +1493,7 @@ function createQuestSystem(app, npcSystem, playerPosition) {
       quests.relic.state === "recover" &&
       near(relic.position, 2.5)
     ) {
-      message = "E · Take the brass relic from Judicial holding";
+      message = "E · Take the brass relic from Relic Storage";
     } else if (
       quests.supply.state === "search" &&
       near(tape.position, 2.5)
@@ -1544,7 +1539,6 @@ function createQuestSystem(app, npcSystem, playerPosition) {
     bearingTarget,
     generatorRepair,
     gardenClue,
-    judicialTarget,
     relic,
     sheriffDropoff,
     tape,
@@ -2495,6 +2489,7 @@ async function startGame() {
   }
   enterButton.addEventListener("pointerdown", (event) => {
     event.preventDefault();
+    event.stopPropagation();
     if (touchMode) {
       enterButton.classList.add("hidden");
       status.textContent = "";
@@ -2504,27 +2499,86 @@ async function startGame() {
   });
   const touchLookPoints = new Map();
   let pinchDistance = null;
+  let suppressFloorSelectionUntil = 0;
+  let startupCanvasGestureHandled = false;
+  const beginStartupCanvasGuard = () => {
+    if (startupCanvasGestureHandled) return;
+    startupCanvasGestureHandled = true;
+    suppressFloorSelectionUntil = performance.now() + 750;
+  };
+  const suppressFloorSelection = (event) => {
+    const touchRelease =
+      touchMode &&
+      [
+        "pointerup",
+        "pointercancel",
+        "mouseup",
+        "click",
+        "touchend",
+        "touchcancel",
+      ].includes(event.type);
+    if (!touchRelease && performance.now() > suppressFloorSelectionUntil) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (event.type === "pointerup" || event.type === "pointercancel") {
+      touchLookPoints.delete(event.pointerId);
+      pinchDistance = null;
+    }
+  };
+  for (const eventName of [
+    "pointerup",
+    "pointercancel",
+    "mouseup",
+    "click",
+    "touchend",
+    "touchcancel",
+  ]) {
+    canvas.addEventListener(eventName, suppressFloorSelection, {
+      capture: true,
+      passive: false,
+    });
+  }
+  const beginTouchLook = (event) => {
+    enterButton.classList.add("hidden");
+    canvas.setPointerCapture(event.pointerId);
+    touchLookPoints.set(event.pointerId, {
+      x: event.clientX,
+      y: event.clientY,
+    });
+    if (touchLookPoints.size === 2) {
+      const [first, second] = [...touchLookPoints.values()];
+      pinchDistance = Math.hypot(second.x - first.x, second.y - first.y);
+    }
+  };
   canvas.addEventListener(
     "pointerdown",
     (event) => {
-      if (touchMode && event.pointerType === "touch") {
+      if (touchMode) {
         event.preventDefault();
-        enterButton.classList.add("hidden");
-        canvas.setPointerCapture(event.pointerId);
-        touchLookPoints.set(event.pointerId, {
-          x: event.clientX,
-          y: event.clientY,
-        });
-        if (touchLookPoints.size === 2) {
-          const [first, second] = [...touchLookPoints.values()];
-          pinchDistance = Math.hypot(
-            second.x - first.x,
-            second.y - first.y,
-          );
-        }
+        event.stopImmediatePropagation();
+        beginStartupCanvasGuard();
+        beginTouchLook(event);
         return;
       }
-      if (document.pointerLockElement !== canvas) capturePointer();
+      if (
+        startupCanvasGestureHandled ||
+        document.pointerLockElement === canvas
+      ) {
+        return;
+      }
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      beginStartupCanvasGuard();
+      capturePointer();
+    },
+    { capture: true, passive: false },
+  );
+  canvas.addEventListener(
+    "pointerdown",
+    (event) => {
+      if (document.pointerLockElement !== canvas) {
+        capturePointer();
+      }
     },
     { passive: false },
   );
