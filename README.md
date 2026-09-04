@@ -49,7 +49,10 @@ card to teleport directly to that floor.
 Open the quest tracker to view and select every available quest. **The
 Forbidden Relic** begins with Mara on Level 67, while **They’re Good in Supply**
 begins independently with Walker on Level 144. Their starting NPCs are marked
-with question marks, and each quest can be completed in either order.
+with question marks, and each quest can be completed in either order. Mara's
+trail runs through the Gardens and Judicial's relic holding before returning to
+her. Walker sends you to recover GOOD tape from Supply and deliver it to
+Sheriff's Holding 3 before a prisoner is sent out to clean.
 
 At **The Gap**, use the scaffold interaction near Level 90 or Level 92 to cross
 the missing stair section safely.

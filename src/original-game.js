@@ -669,9 +669,34 @@ function createQuestSystem(app, npcSystem, playerPosition) {
   supplyMarker.setSymbol("?");
   supplyGiver.group.add(supplyMarker.sprite);
 
+  const gardenClue = new THREE.Group();
+  gardenClue.name = "judicial-relic-intake-tag";
+  gardenClue.position.set(-48.45, -66 * LEVEL_HEIGHT + 0.08, -35.28);
+  const clueMaterial = new THREE.MeshStandardMaterial({
+    color: 0xd8caa5,
+    roughness: 0.92,
+  });
+  const clueCard = new THREE.Mesh(
+    new THREE.BoxGeometry(0.34, 0.025, 0.22),
+    clueMaterial,
+  );
+  gardenClue.add(clueCard);
+  const clueGlint = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.055),
+    new THREE.MeshBasicMaterial({
+      color: 0xffe2a0,
+      transparent: true,
+      opacity: 0.9,
+    }),
+  );
+  clueGlint.position.set(0.08, 0.2, 0);
+  gardenClue.add(clueGlint);
+  gardenClue.visible = false;
+  app.groups.dynamic.add(gardenClue);
+
   const relic = new THREE.Group();
   relic.name = "last-green-token";
-  relic.position.set(-48.45, -66 * LEVEL_HEIGHT + 0.08, -35.28);
+  relic.position.set(-42, -14 * LEVEL_HEIGHT + 1.05, -12);
 
   const brass = new THREE.MeshStandardMaterial({
     color: 0xa9782c,
@@ -719,6 +744,15 @@ function createQuestSystem(app, npcSystem, playerPosition) {
   relic.visible = false;
 
   app.groups.dynamic.add(relic);
+
+  const judicialTarget = new THREE.Group();
+  judicialTarget.name = "judicial-relic-holding-marker";
+  judicialTarget.position.set(-42, -14 * LEVEL_HEIGHT, -12);
+  const judicialMarker = createQuestMarker();
+  judicialMarker.setSymbol("!");
+  judicialTarget.add(judicialMarker.sprite);
+  judicialTarget.visible = false;
+  app.groups.dynamic.add(judicialTarget);
 
   const tape = new THREE.Group();
   tape.name = "good-supply-tape";
@@ -780,17 +814,30 @@ function createQuestSystem(app, npcSystem, playerPosition) {
   tape.visible = false;
   app.groups.dynamic.add(tape);
 
+  const sheriffDropoff = new THREE.Group();
+  sheriffDropoff.name = "holding-3-tape-dropoff";
+  sheriffDropoff.position.set(-49, -1 * LEVEL_HEIGHT, -13);
+  const sheriffMarker = createQuestMarker();
+  sheriffMarker.setSymbol("!");
+  sheriffDropoff.add(sheriffMarker.sprite);
+  sheriffDropoff.visible = false;
+  app.groups.dynamic.add(sheriffDropoff);
+
   const relicIntroDialogue = [
     "A porter once showed me a brass token from before the Rebellion. Said he hid it where the Silo still remembers sunlight.",
-    "He called the hiding place a room where the Silo pretends the outside still exists. That was all he would tell me.",
+    "He called the hiding place a room where the Silo pretends the outside still exists. Find what he left there before Judicial erases the trail.",
   ];
   const relicReturnDialogue = [
-    "A tree under an open sky… so the stories weren’t invented here.",
-    "Keep it. Just don’t let Judicial see you carrying it.",
+    "You took it out of Judicial’s own relic holding? A tree under an open sky… so the stories weren’t invented here.",
+    "Keep it hidden. Judicial will notice the empty place soon enough.",
   ];
   const supplyDialogue = [
-    "The seals on Juliette’s suit taught me what Supply calls good tape and what actually survives heat.",
-    "Find the roll marked GOOD somewhere in their warehouse on Level 110. With all those racks, it may take some looking.",
+    "Someone in Holding 3 is being sent out to clean at shift change. The tape Supply issued for the suit seal won’t survive the heat.",
+    "Find the roll marked GOOD in their Level 110 warehouse, then get it to the Sheriff’s station before they lock the airlock.",
+  ];
+  const holdingDialogue = [
+    "A hand reaches through the Holding 3 food hatch. You pass over the roll marked GOOD.",
+    "From behind the door: “They’ll think they sealed the suit their way. Thank you.”",
   ];
 
   const quests = {
@@ -829,12 +876,15 @@ function createQuestSystem(app, npcSystem, playerPosition) {
       if (quest.state === "search") {
         return quest.searchTime > 75
           ? "Hint: Seek the place where the Silo manufactures daylight."
-          : "Find the brass token using Mara’s clues.";
+          : "Follow Mara’s clue to the place that imitates the outside.";
+      }
+      if (quest.state === "recover") {
+        return "The intake tag points to Judicial’s relic holding on Level 14. Recover the brass token.";
       }
       if (quest.state === "return") {
-        return "Return to Mara on Level 67.";
+        return "Bring the recovered relic back to Mara on Level 67.";
       }
-      return "Complete · The forbidden relic is yours.";
+      return "Complete · The relic was recovered from Judicial.";
     }
 
     if (quest.state === "available") {
@@ -845,7 +895,10 @@ function createQuestSystem(app, npcSystem, playerPosition) {
         ? "Hint: Check the open aisle beyond the deeper racks, beside the stacked spools."
         : "Search Supply’s Level 110 warehouse for the roll marked GOOD.";
     }
-    return "Complete · You found the GOOD tape.";
+    if (quest.state === "deliver") {
+      return "Bring the GOOD tape to Sheriff’s Holding 3 on Level 1 before the cleaning.";
+    }
+    return "Complete · The GOOD tape reached Holding 3 in time.";
   }
 
   function questStateLabel(quest) {
@@ -931,15 +984,16 @@ function createQuestSystem(app, npcSystem, playerPosition) {
     quests.relic.state = "search";
     trackedQuestId = "relic";
     relicMarker.sprite.visible = false;
-    relic.visible = true;
+    gardenClue.visible = true;
     quests.relic.searchTime = 0;
-    showToast("NEW OBJECTIVE · FIND THE BRASS TOKEN");
+    showToast("NEW OBJECTIVE · FOLLOW THE PORTER’S TRAIL");
     renderJournal(true);
   }
 
   function completeRelicQuest() {
     quests.relic.state = "complete";
     relicMarker.sprite.visible = false;
+    judicialTarget.visible = false;
     showToast("QUEST COMPLETE · THE FORBIDDEN RELIC");
     renderJournal(true);
   }
@@ -951,6 +1005,13 @@ function createQuestSystem(app, npcSystem, playerPosition) {
     tape.visible = true;
     quests.supply.searchTime = 0;
     showToast("QUEST STARTED · THEY’RE GOOD IN SUPPLY");
+    renderJournal(true);
+  }
+
+  function completeSupplyQuest() {
+    quests.supply.state = "complete";
+    sheriffDropoff.visible = false;
+    showToast("QUEST COMPLETE · THE GOOD TAPE REACHED HOLDING 3");
     renderJournal(true);
   }
 
@@ -1013,9 +1074,22 @@ function createQuestSystem(app, npcSystem, playerPosition) {
       return true;
     }
 
-    if (quests.relic.state === "search" && near(relic.position, 2.1)) {
+    if (quests.relic.state === "search" && near(gardenClue.position, 2.1)) {
+      quests.relic.state = "recover";
+      gardenClue.visible = false;
+      relic.visible = true;
+      judicialTarget.visible = true;
+      prompt.classList.remove("show");
+      prompt.textContent = "";
+      showToast("CLUE FOUND · JUDICIAL RELIC HOLDING · LEVEL 14");
+      renderJournal(true);
+      return true;
+    }
+
+    if (quests.relic.state === "recover" && near(relic.position, 2.5)) {
       quests.relic.state = "return";
       relic.visible = false;
+      judicialTarget.visible = false;
       relicMarker.sprite.visible = true;
       prompt.classList.remove("show");
       prompt.textContent = "";
@@ -1027,12 +1101,25 @@ function createQuestSystem(app, npcSystem, playerPosition) {
     }
 
     if (quests.supply.state === "search" && near(tape.position, 2.5)) {
-      quests.supply.state = "complete";
+      quests.supply.state = "deliver";
       tape.visible = false;
+      sheriffDropoff.visible = true;
       prompt.classList.remove("show");
       prompt.textContent = "";
-      showToast("QUEST COMPLETE · FOUND THE GOOD TAPE");
+      showToast("GOOD TAPE FOUND · DELIVER IT TO HOLDING 3 · LEVEL 1");
       renderJournal(true);
+      return true;
+    }
+
+    if (
+      quests.supply.state === "deliver" &&
+      near(sheriffDropoff.position, 3.2)
+    ) {
+      openDialogue({
+        onFinish: completeSupplyQuest,
+        pages: holdingDialogue,
+        speakerLabel: "HOLDING 3 · LEVEL 1",
+      });
       return true;
     }
 
@@ -1047,9 +1134,18 @@ function createQuestSystem(app, npcSystem, playerPosition) {
     if (quests.supply.state === "search") quests.supply.searchTime += delta;
     renderJournal();
 
+    const clueDistance = playerPosition.distanceTo(gardenClue.position);
+    const clueGlintVisible =
+      quests.relic.state === "search" && clueDistance < 7;
+    clueGlint.visible = clueGlintVisible;
+    if (clueGlintVisible) {
+      clueGlint.rotation.y += delta * 2.8;
+      const pulse = 0.75 + Math.sin(performance.now() * 0.006) * 0.25;
+      clueGlint.scale.setScalar(pulse);
+    }
     const relicDistance = playerPosition.distanceTo(relic.position);
     const glintVisible =
-      quests.relic.state === "search" && relicDistance < 7;
+      quests.relic.state === "recover" && relicDistance < 7;
     glint.visible = glintVisible;
     if (glintVisible) {
       glint.rotation.y += delta * 2.8;
@@ -1085,14 +1181,24 @@ function createQuestSystem(app, npcSystem, playerPosition) {
       message = "E · Talk to Walker";
     } else if (
       quests.relic.state === "search" &&
-      near(relic.position, 2.1)
+      near(gardenClue.position, 2.1)
     ) {
-      message = "E · Inspect the brass glint";
+      message = "E · Inspect the discarded intake tag";
+    } else if (
+      quests.relic.state === "recover" &&
+      near(relic.position, 2.5)
+    ) {
+      message = "E · Take the brass relic from Judicial holding";
     } else if (
       quests.supply.state === "search" &&
       near(tape.position, 2.5)
     ) {
       message = "E · Inspect the roll marked GOOD";
+    } else if (
+      quests.supply.state === "deliver" &&
+      near(sheriffDropoff.position, 3.2)
+    ) {
+      message = "E · Pass the GOOD tape into Holding 3";
     }
 
     prompt.textContent = message;
@@ -1113,7 +1219,10 @@ function createQuestSystem(app, npcSystem, playerPosition) {
     quests,
     relicGiver,
     supplyGiver,
+    gardenClue,
+    judicialTarget,
     relic,
+    sheriffDropoff,
     tape,
     update,
   };
