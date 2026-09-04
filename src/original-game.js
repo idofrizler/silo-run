@@ -1095,7 +1095,7 @@ function createQuestSystem(app, npcSystem, playerPosition) {
         : "Find the bearing on The Digger’s blade on Level 147. Use the marked ladder to climb out of the water.";
     }
     if (quest.state === "install") {
-      return "Return to Level 145 and install the bearing at the marked coupling inside the Generator.";
+      return "Return to Level 145, climb the wall staircase, and install the bearing at the marked coupling inside the Generator.";
     }
     if (quest.state === "return") {
       return "Tell Shirley on Generator Level 145 that the knock is gone.";
@@ -2071,12 +2071,16 @@ async function startGame() {
   const deepGroundMeshes = [
     "deep/generator/matte",
     "deep/generator/metal",
+    "deep/generator/steps",
     "deep/digger/matte",
     "deep/digger/metal",
     "deep/digger/rock",
   ]
     .map((name) => app.groups.world.getObjectByName(name))
     .filter(Boolean);
+  const generatorStepMeshes = [
+    app.groups.world.getObjectByName("deep/generator/steps"),
+  ].filter(Boolean);
   const cameraCollisionMeshes = [
     "helix0",
     "helix1",
@@ -2208,10 +2212,15 @@ async function startGame() {
     );
     raycaster.near = 0;
     raycaster.far = distance + lift;
-    return upwardHit(
+    const ground = upwardHit(
       raycaster,
       inGap ? gapGroundMeshes : belowSilo ? deepGroundMeshes : innerColliders,
     );
+    if (belowSilo && ground?.point.y > point.y + 0.42) {
+      const generatorStep = upwardHit(raycaster, generatorStepMeshes);
+      if (generatorStep?.point.y <= point.y + 0.42) return generatorStep;
+    }
+    return ground;
   }
 
   function groundBelow(point, lift = 1.2, distance = 3.2) {
