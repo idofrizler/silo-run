@@ -1,6 +1,9 @@
+import { createHash } from "node:crypto";
 import { copyFile, readFile, writeFile } from "node:fs/promises";
 
 const indexPath = new URL("../site/index.html", import.meta.url);
+const gameScriptPath = new URL("../site/game/game.js", import.meta.url);
+const gameStylePath = new URL("../site/game/game.css", import.meta.url);
 let html = await readFile(indexPath, "utf8");
 
 const theme = `<script>
@@ -219,6 +222,25 @@ setMeta(
   "twitter:image",
   "https://idofrizler.github.io/silo-run/preview.jpg",
 );
+
+const [gameScript, gameStyle] = await Promise.all([
+  readFile(gameScriptPath),
+  readFile(gameStylePath),
+]);
+const assetVersion = createHash("sha256")
+  .update(gameScript)
+  .update(gameStyle)
+  .digest("hex")
+  .slice(0, 12);
+html = html
+  .replace(
+    /\.\/game\/game\.css(?:\?v=[a-f0-9]+)?/g,
+    `./game/game.css?v=${assetVersion}`,
+  )
+  .replace(
+    /\.\/game\/game\.js(?:\?v=[a-f0-9]+)?/g,
+    `./game/game.js?v=${assetVersion}`,
+  );
 
 await Promise.all([
   writeFile(indexPath, html),
