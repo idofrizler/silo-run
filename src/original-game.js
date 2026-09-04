@@ -516,7 +516,28 @@ function createNpcSystem(app, source, wallCollisions, playerPosition) {
       });
       visual.scale.multiplyScalar(0.96);
     } else if (index === 2) {
-      styleHumanoidHair(visual, 0x4c3529);
+      styleHumanoidHair(visual, 0x211713);
+      visual.traverse((object) => {
+        if (!object.isMesh) return;
+        const materials = Array.isArray(object.material)
+          ? object.material
+          : [object.material];
+        for (const material of materials) {
+          const name = material.name.toLowerCase();
+          if (material.color && name.includes("skin")) {
+            material.color.setHex(0x6b402d);
+          } else if (material.color && name.includes("eyebrow")) {
+            material.color.setHex(0x211713);
+          }
+        }
+        if (object.name === "Adventurer_Body") {
+          object.scale.x *= 0.9;
+        } else if (object.name === "Adventurer_Legs") {
+          object.scale.x *= 1.04;
+        } else if (object.name === "Backpack") {
+          object.scale.x *= 0.92;
+        }
+      });
     }
     group.add(visual);
     npcGroup.add(group);
