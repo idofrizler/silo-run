@@ -338,6 +338,55 @@ function stabilizeLighting(app) {
   return navigationLight;
 }
 
+function repairFloorNumeralAtlas(app) {
+  const numeralMesh =
+    app.groups.world.getObjectByName("placardNumerals")?.children[0] ||
+    app.groups.world.getObjectByName("shell-numerals")?.children[0];
+  const texture = numeralMesh?.material?.map;
+  const image = texture?.image;
+  if (
+    !(image instanceof HTMLCanvasElement) ||
+    (image.width >= 1024 && image.height >= 1024)
+  ) {
+    return;
+  }
+
+  const size = 1024;
+  const columns = 12;
+  const rows = 13;
+  const cellWidth = size / columns;
+  const cellHeight = size / rows;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const context = canvas.getContext("2d");
+  context.clearRect(0, 0, size, size);
+  context.fillStyle = "#f4edda";
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+
+  for (let level = 1; level <= 144; level += 1) {
+    const text = String(level);
+    let fontSize = cellHeight * 0.68;
+    context.font = `900 ${fontSize}px "Helvetica Neue", Arial, sans-serif`;
+    const maxWidth = cellWidth * 0.8;
+    const measuredWidth = context.measureText(text).width;
+    if (measuredWidth > maxWidth) fontSize *= maxWidth / measuredWidth;
+    context.font = `900 ${fontSize}px "Helvetica Neue", Arial, sans-serif`;
+    const column = (level - 1) % columns;
+    const row = Math.floor((level - 1) / columns);
+    context.fillText(
+      text,
+      (column + 0.5) * cellWidth,
+      (row + 0.52) * cellHeight,
+    );
+  }
+
+  texture.image = canvas;
+  texture.dispose();
+  texture.needsUpdate = true;
+}
+
 function lockToSilo18(app) {
   const root = document.documentElement;
   let restoring = false;
@@ -1981,6 +2030,7 @@ async function startGame() {
   const navigationLight = stabilizeLighting(app);
 
   const completedHalf = completeSilo(app);
+  repairFloorNumeralAtlas(app);
   app.scene.updateMatrixWorld(true);
   const originalShell = app.groups.world.getObjectByName("shell");
   const wallCollisions = createCollisionGrid([originalShell, completedHalf]);
@@ -2495,7 +2545,7 @@ async function startGame() {
         pinchDistance = distance;
       } else {
         applyLookDelta(
-          event.clientX - previous.x,
+          (event.clientX - previous.x) * 3,
           event.clientY - previous.y,
         );
       }
