@@ -954,6 +954,7 @@ function createQuestSystem(app, npcSystem, playerPosition) {
   const generatorIntroDialogue = [
     "Hear that rhythm under the Generator? Every seventh turn, the housing knocks back. That means the main bearing is starting to walk.",
     "The Digger on Level 147 used the same old-size bearing. Find one down there, then install it at the marked coupling here on Generator.",
+    "You’ll have to jump onto the drill blade to reach it. If you fall into the water, use the marked maintenance ladder to climb back up.",
   ];
   const generatorInstallDialogue = [
     "You seat the Digger bearing in the coupling and lock the retaining ring.",
@@ -1041,8 +1042,8 @@ function createQuestSystem(app, npcSystem, playerPosition) {
     }
     if (quest.state === "search") {
       return quest.searchTime > 75
-        ? "Hint: Search beside the original machinery in The Digger."
-        : "Find an original bearing in The Digger on Level 147.";
+        ? "Hint: Jump onto the drill blade. A marked ladder leads out of the water if you fall."
+        : "Find the bearing on The Digger’s blade on Level 147. Use the marked ladder to climb out of the water.";
     }
     if (quest.state === "install") {
       return "Return to Generator Level 145 and install the bearing at the marked coupling.";
@@ -1586,6 +1587,7 @@ function createDeepTraversal(app, playerPosition, onArrive) {
   const generatorUpper = new THREE.Vector3(-45, -1124.97, -16);
   const generatorLower = new THREE.Vector3(-30, -1124.97, -20);
   const digger = new THREE.Vector3(-20, -1165.5, -20);
+  const diggerWater = new THREE.Vector3(-20, -1178.16, -16);
   const routes = [
     {
       destination: generatorUpper,
@@ -1615,6 +1617,14 @@ function createDeepTraversal(app, playerPosition, onArrive) {
       prompt: "E · Take the maintenance lift up to Generator",
       symbol: "↑",
     },
+    {
+      destination: digger,
+      ladder: true,
+      message: "Climbing out of the water to the Digger platform…",
+      point: diggerWater,
+      prompt: "E · Climb the maintenance ladder back to the Digger",
+      symbol: "↑",
+    },
   ];
 
   const stations = new THREE.Group();
@@ -1630,20 +1640,49 @@ function createDeepTraversal(app, playerPosition, onArrive) {
     const station = new THREE.Group();
     station.position.copy(route.point);
 
-    const hatch = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.72, 0.72, 0.06, 24),
-      hatchMaterial,
-    );
-    hatch.position.y = 0.03;
-    station.add(hatch);
+    if (route.ladder) {
+      const climb = route.destination.clone().sub(route.point);
+      const railLength = climb.length();
+      const railDirection = climb.clone().normalize();
+      const railMaterial = new THREE.MeshStandardMaterial({
+        color: 0x5a625e,
+        metalness: 0.8,
+        roughness: 0.34,
+      });
+      for (const offset of [-0.38, 0.38]) {
+        const rail = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.045, 0.045, railLength, 10),
+          railMaterial,
+        );
+        rail.position.copy(climb).multiplyScalar(0.5);
+        rail.position.x += offset;
+        rail.quaternion.setFromUnitVectors(UP, railDirection);
+        station.add(rail);
+      }
+      for (let step = 1; step < 15; step += 1) {
+        const rung = new THREE.Mesh(
+          new THREE.BoxGeometry(0.82, 0.055, 0.07),
+          railMaterial,
+        );
+        rung.position.copy(climb).multiplyScalar(step / 15);
+        station.add(rung);
+      }
+    } else {
+      const hatch = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.72, 0.72, 0.06, 24),
+        hatchMaterial,
+      );
+      hatch.position.y = 0.03;
+      station.add(hatch);
 
-    const ring = new THREE.Mesh(
-      new THREE.TorusGeometry(0.52, 0.045, 8, 24),
-      ringMaterial,
-    );
-    ring.position.y = 0.07;
-    ring.rotation.x = Math.PI / 2;
-    station.add(ring);
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(0.52, 0.045, 8, 24),
+        ringMaterial,
+      );
+      ring.position.y = 0.07;
+      ring.rotation.x = Math.PI / 2;
+      station.add(ring);
+    }
 
     const canvas = document.createElement("canvas");
     canvas.width = 128;
@@ -1733,6 +1772,7 @@ function createDeepTraversal(app, playerPosition, onArrive) {
       return Boolean(activeRoute);
     },
     digger,
+    diggerWater,
     generatorLower,
     generatorUpper,
     interact,

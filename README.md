@@ -63,7 +63,9 @@ the missing stair section safely.
 
 At the bottom of the Great Stair, use the marked service lifts to travel from
 Level 144 to the Generator and onward to the Digger. The same lifts return
-upward.
+upward. In The Digger, the quest bearing remains a challenging jump onto the
+drill blade. If you fall into the water, use the marked maintenance ladder at
+the platform edge to climb back up.
 
 Silo Run is currently locked to **Silo 18**. The flooded Silo 17 scene is
 disabled so its controls and rendering cannot interrupt gameplay.
